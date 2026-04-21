@@ -25,6 +25,8 @@ cargo build
 
 Expected outcome: zero errors, zero warnings, binary produced at `target/debug/linear`.
 
+Release binary size: **2.4 MB** (well under the 20 MB limit). Build with `cargo build --release`.
+
 ---
 
 ## Run Quality Checks

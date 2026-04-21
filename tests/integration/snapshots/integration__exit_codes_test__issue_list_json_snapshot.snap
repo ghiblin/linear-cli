@@ -1,0 +1,5 @@
+---
+source: tests/integration/exit_codes_test.rs
+expression: stdout.trim()
+---
+[]

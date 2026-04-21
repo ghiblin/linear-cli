@@ -1,0 +1,5 @@
+---
+source: tests/integration/version_test.rs
+expression: stdout.trim()
+---
+{"version":"0.1.0","api_schema":"2026-04-21"}
