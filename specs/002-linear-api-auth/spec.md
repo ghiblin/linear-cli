@@ -61,9 +61,9 @@ A user wants to sign out of the CLI — either to revoke access on a shared mach
 
 - When the system keychain is unavailable or access is denied, `auth login` MUST fail with a clear error message and exit code 3; the user must re-run with `--store-file` to opt into config-file storage.
 - When the Linear API is unreachable during `auth login`, the CLI MUST refuse to store the key, emit a "could not reach Linear API" error on stderr, and exit with code 2.
-- What happens when the stored credential is corrupted or truncated?
-- How does the system behave when the API key has read-only scope vs. full scope?
-- What exit code is returned when the user cancels an interactive login prompt (Ctrl-C)?
+- When the stored credential is corrupted or truncated (a non-empty string that fails remote validation), the CLI MUST silently remove the entry from the store and continue as if unauthenticated, surfacing the normal "no valid credential" error via exit code 3.
+- API key scope (read-only vs. full) is NOT validated at `auth login` in v1; the only check is that the key grants API access. Write commands that receive a GraphQL permission error MUST surface it as an API error (exit code 2).
+- When the user cancels an interactive `auth login` prompt (Ctrl-C / SIGINT), the CLI MUST exit cleanly with code 0 and emit no error output.
 
 ## Requirements *(mandatory)*
 
@@ -117,3 +117,6 @@ A user wants to sign out of the CLI — either to revoke access on a shared mach
 - Q: When the API key is provided via environment variable, is it persisted? → A: No — `LINEAR_API_KEY` is a per-invocation override on any command; it is never written to the credential store and does not interact with `auth login`.
 - Q: Does `LINEAR_API_KEY` require a prior `auth login`? → A: No — `LINEAR_API_KEY` alone is sufficient; credential resolution checks env var first, then stored credential.
 - Q: When the Linear API is unreachable during `auth login`, should the CLI store the key anyway? → A: No — refuse to store, emit a network error on stderr, and exit with code 2.
+- Q: What happens when the stored credential is corrupted or truncated? → A: Silently remove the entry and proceed as unauthenticated (exit code 3 via the normal `NotAuthenticated` path).
+- Q: How does the system behave when the API key has read-only scope vs. full scope? → A: Scope is not validated at login in v1; write-command failures surface as exit code 2 (API/GraphQL error).
+- Q: What exit code is returned when the user cancels an interactive login prompt (Ctrl-C)? → A: Exit code 0 — clean cancellation, no error output.
