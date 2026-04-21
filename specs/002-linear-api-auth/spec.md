@@ -20,7 +20,7 @@ A new user runs the CLI for the first time and wants to connect it to their Line
 1. **Given** the user has not previously authenticated, **When** they run the auth login command and enter a valid Linear API key, **Then** the CLI validates the key against Linear, stores it securely, and confirms the connected workspace name.
 2. **Given** the user has not previously authenticated, **When** they run the auth login command and enter an invalid or expired API key, **Then** the CLI reports that the key could not be verified and exits with auth error code (3), without storing the key.
 3. **Given** the user is already authenticated, **When** they run the auth login command, **Then** the CLI warns that an existing session is active and prompts for confirmation before overwriting.
-4. **Given** the user provides the API key via an environment variable instead of interactive input, **When** they run the auth login command, **Then** the CLI accepts the key from the environment variable and proceeds with validation and storage.
+4. **Given** `LINEAR_API_KEY` is set in the environment and no stored credential exists, **When** the user runs any command that requires authentication, **Then** the CLI uses the env-var key for that invocation, validates it, and proceeds without requiring `auth login`.
 
 ---
 
@@ -59,8 +59,8 @@ A user wants to sign out of the CLI — either to revoke access on a shared mach
 
 ### Edge Cases
 
-- What happens when the secure credential store (system keychain) is unavailable or access is denied?
-- What happens when the Linear API is unreachable during key validation at login?
+- When the system keychain is unavailable or access is denied, `auth login` MUST fail with a clear error message and exit code 3; the user must re-run with `--store-file` to opt into config-file storage.
+- When the Linear API is unreachable during `auth login`, the CLI MUST refuse to store the key, emit a "could not reach Linear API" error on stderr, and exit with code 2.
 - What happens when the stored credential is corrupted or truncated?
 - How does the system behave when the API key has read-only scope vs. full scope?
 - What exit code is returned when the user cancels an interactive login prompt (Ctrl-C)?
@@ -70,15 +70,17 @@ A user wants to sign out of the CLI — either to revoke access on a shared mach
 ### Functional Requirements
 
 - **FR-001**: The CLI MUST provide an `auth login` command that accepts a Linear personal API key and stores it for subsequent commands.
-- **FR-002**: The `auth login` command MUST validate the provided key against the Linear API before storing it, confirming the key grants access to at least one workspace.
-- **FR-003**: Credentials MUST be stored in the system's secure credential store by default; plain-text storage is only permitted if the user explicitly opts in.
+- **FR-002**: The `auth login` command MUST validate the provided key against the Linear API before storing it, confirming the key grants access to at least one workspace; if the API is unreachable, the command MUST exit with code 2 and refuse to store the key.
+- **FR-003**: Credentials MUST be stored in the system's secure credential store by default; if the keychain is unavailable, `auth login` MUST fail with exit code 3 and instruct the user to re-run with `--store-file` to opt into config-file storage.
+- **FR-003a**: The `auth login` command MUST support a `--store-file [PATH]` flag that stores credentials in a plain-text file at the specified path (or a default config-file location if no path is given); use of this flag MUST display a warning that credentials will be stored unencrypted.
 - **FR-004**: The CLI MUST provide an `auth status` command that reports whether valid credentials are present and identifies the connected workspace.
 - **FR-005**: The CLI MUST provide an `auth logout` command that removes stored credentials from all storage locations used by the CLI.
 - **FR-006**: The `auth logout` command MUST support a `--dry-run` flag that reports what would be removed without making any changes.
-- **FR-007**: All commands that require authentication MUST exit with code 3 and emit a descriptive error on stderr when credentials are absent or invalid, guiding the user to run `auth login`.
+- **FR-007**: All commands that require authentication MUST exit with code 3 and emit a descriptive error on stderr when both `LINEAR_API_KEY` and the stored credential are absent or invalid; the error MUST guide the user to either set `LINEAR_API_KEY` or run `auth login`.
 - **FR-008**: Auth tokens MUST be redacted in all log output regardless of log verbosity level.
 - **FR-009**: When stdout is a TTY, auth commands MUST produce human-readable output; when stdout is a pipe or `--output json` is set, output MUST be machine-parseable JSON.
-- **FR-010**: The `auth login` command MUST accept the API key via an environment variable as an alternative to interactive input, to support non-interactive and agent-driven workflows.
+- **FR-010**: Any CLI command MUST accept the `LINEAR_API_KEY` environment variable as the sole credential source; when set, it takes precedence over any stored credential, requires no prior `auth login`, and is never written to disk.
+- **FR-011**: The credential resolution order MUST be: (1) `LINEAR_API_KEY` env var, (2) stored credential. A command MUST proceed if either source yields a valid key; exit code 3 is only emitted when both sources are absent or invalid.
 
 ### Key Entities
 
@@ -103,6 +105,15 @@ A user wants to sign out of the CLI — either to revoke access on a shared mach
 - The CLI targets a single Linear account per machine in v1; multi-profile support is out of scope.
 - The user has already generated a Personal API Key in their Linear account settings; the CLI does not manage key creation within Linear.
 - The API key format is a stable string token as defined by Linear's API documentation; format validation (length, prefix) is a reasonable secondary check but is not the primary validation mechanism.
-- The system keychain is available on all supported platforms (macOS Keychain, Linux Secret Service / kwallet, Windows Credential Manager); graceful fallback messaging is required when it is unavailable.
+- When the system keychain is unavailable, the CLI fails with a clear error and directs the user to `--store-file`; there is no silent fallback.
 - Re-authentication (login while already logged in) overwrites the existing credential after user confirmation; there is no support for multiple simultaneous credentials.
 - Network connectivity is assumed to be available during `auth login` and `auth status`; offline validation is not required.
+
+## Clarifications
+
+### Session 2026-04-21
+
+- Q: When `auth login` is run and the system keychain is unavailable, what should the CLI do? → A: Fail with exit code 3 and a clear error message; user must re-run with `--store-file` to opt into config-file storage.
+- Q: When the API key is provided via environment variable, is it persisted? → A: No — `LINEAR_API_KEY` is a per-invocation override on any command; it is never written to the credential store and does not interact with `auth login`.
+- Q: Does `LINEAR_API_KEY` require a prior `auth login`? → A: No — `LINEAR_API_KEY` alone is sufficient; credential resolution checks env var first, then stored credential.
+- Q: When the Linear API is unreachable during `auth login`, should the CLI store the key anyway? → A: No — refuse to store, emit a network error on stderr, and exit with code 2.
