@@ -7,3 +7,4 @@ release/
 .idea/
 *.log
 .env*
+.claude/projects/
