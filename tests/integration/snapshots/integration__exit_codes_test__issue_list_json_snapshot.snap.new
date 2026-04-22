@@ -1,5 +1,6 @@
 ---
 source: tests/integration/exit_codes_test.rs
+assertion_line: 28
 expression: stdout.trim()
 ---
-[]
+

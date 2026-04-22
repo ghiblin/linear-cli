@@ -1,12 +1,14 @@
 use thiserror::Error;
 
-use crate::domain::errors::DomainError;
+use crate::domain::errors::{AuthError, DomainError};
 
+#[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum ApplicationError {
     #[error(transparent)]
     Domain(#[from] DomainError),
-    #[allow(dead_code)]
+    #[error(transparent)]
+    Auth(#[from] AuthError),
     #[error("unexpected error: {0}")]
     Unexpected(String),
 }

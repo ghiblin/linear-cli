@@ -1,9 +1,10 @@
+pub mod auth;
 pub mod issue;
 pub mod team;
 
 use clap::{Parser, Subcommand};
 
-use crate::cli::commands::{issue::IssueCommand, team::TeamCommand};
+use crate::cli::commands::{auth::AuthCommand, issue::IssueCommand, team::TeamCommand};
 
 #[derive(Parser)]
 #[command(
@@ -33,6 +34,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    #[command(about = "Manage Linear authentication")]
+    Auth(AuthCommand),
     #[command(about = "Manage Linear issues")]
     Issue(IssueCommand),
     #[command(about = "Manage Linear teams")]

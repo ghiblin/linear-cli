@@ -9,7 +9,9 @@ use clap::Parser;
 use serde::Serialize;
 use tracing_subscriber::{EnvFilter, fmt};
 
+use crate::application::errors::ApplicationError;
 use crate::cli::commands::{Cli, Commands};
+use crate::domain::errors::AuthError;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const API_SCHEMA_DATE: &str = "2026-04-21";
@@ -22,6 +24,10 @@ struct VersionInfo {
 
 #[tokio::main]
 async fn main() {
+    if std::env::var("SKIP_KEYCHAIN_TESTS").is_ok() {
+        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+    }
+
     let cli = match Cli::try_parse() {
         Ok(c) => c,
         Err(e) => {
@@ -45,14 +51,20 @@ async fn main() {
     match run(&cli).await {
         Ok(()) => {}
         Err(e) => {
-            eprintln!("error: {e}");
-            process::exit(1);
+            let code = exit_code_for(&e);
+            if code > 0 {
+                eprintln!("error: {e}");
+            }
+            process::exit(code);
         }
     }
 }
 
 async fn run(cli: &Cli) -> anyhow::Result<()> {
     match &cli.command {
+        Some(Commands::Auth(cmd)) => {
+            cli::commands::auth::run_auth(cmd, cli.json).await?;
+        }
         Some(Commands::Issue(cmd)) => {
             cli::commands::issue::run_issue(cmd, cli.json).await?;
         }
@@ -65,6 +77,20 @@ async fn run(cli: &Cli) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn exit_code_for(e: &anyhow::Error) -> i32 {
+    if let Some(ApplicationError::Auth(auth_err)) = e.downcast_ref::<ApplicationError>() {
+        return match auth_err {
+            AuthError::Cancelled => 0,
+            AuthError::NetworkError(_) | AuthError::ValidationFailed(_) => 2,
+            AuthError::NotAuthenticated
+            | AuthError::InvalidKey
+            | AuthError::KeychainUnavailable(_)
+            | AuthError::FileError(_) => 3,
+        };
+    }
+    1
 }
 
 fn init_tracing(verbose: u8) {
