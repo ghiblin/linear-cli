@@ -18,8 +18,8 @@
 
 **Purpose**: Scaffold new module files so subsequent tasks have concrete target files.
 
-- [ ] T001 Create `src/infrastructure/auth/` directory with empty `mod.rs`, `keyring_store.rs`, and `file_store.rs`; add `pub mod auth;` to `src/infrastructure/mod.rs`
-- [ ] T002 [P] Create stub `tests/integration/auth_integration.rs` and `tests/e2e/auth_e2e.rs` with `// TODO` placeholders; add `[[test]]` entries to `Cargo.toml` for both files if not already present
+- [X] T001 Create `src/infrastructure/auth/` directory with empty `mod.rs`, `keyring_store.rs`, and `file_store.rs`; add `pub mod auth;` to `src/infrastructure/mod.rs`
+- [X] T002 [P] Create stub `tests/integration/auth_integration.rs` and `tests/e2e/auth_e2e.rs` with `// TODO` placeholders; add `[[test]]` entries to `Cargo.toml` for both files if not already present
 
 ---
 
@@ -29,14 +29,14 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Write failing unit tests for `ApiKey` (non-empty invariant, redacted `Debug`/`Display`, `as_str()` raw access) inside `#[cfg(test)]` in `src/domain/value_objects/api_key.rs`; run `cargo test` and confirm RED
-- [ ] T004 Implement `ApiKey` newtype in `src/domain/value_objects/api_key.rs`; register `pub mod api_key;` in `src/domain/value_objects/mod.rs`; confirm T003 GREEN
-- [ ] T005 [P] Write failing unit tests for `AuthError` variants (`NotAuthenticated`, `InvalidKey`, `ValidationFailed`, `NetworkError`, `KeychainUnavailable`, `FileError`) inside `#[cfg(test)]` in `src/domain/errors.rs`; confirm RED
-- [ ] T006 [P] Add `AuthError` enum to `src/domain/errors.rs` (using `thiserror`); confirm T005 GREEN
-- [ ] T007 Write failing unit tests for `LinearApiClient` trait mock — add `#[cfg_attr(test, mockall::automock)]` stub and confirm the mock compiles — in `src/domain/repositories/linear_api_client.rs`; confirm RED
-- [ ] T008 Define `LinearApiClient` trait (`validate_api_key(&self, key: &ApiKey) -> Result<Workspace, AuthError>`) with `#[cfg_attr(test, mockall::automock)]` in `src/domain/repositories/linear_api_client.rs`; register in `src/domain/repositories/mod.rs`; implement `LinearGraphqlClient` using `cynic` + `reqwest` with `viewer { id name organization { name urlKey } }` query (annotated with `#[cynic::schema_for_derives(file = "schema.graphql", module = "schema")]`) and `Authorization: Bearer` header in `src/infrastructure/graphql/client.rs`; update `src/infrastructure/graphql/mod.rs`; confirm T007 GREEN
-- [ ] T009 [P] Add `ApplicationError::Auth(#[from] AuthError)` variant to `src/application/errors.rs`; confirm existing tests still GREEN
-- [ ] T010 [P] Extend `run()` in `src/main.rs` to map `AuthError::NetworkError` / `ValidationFailed` → `process::exit(2)` and `AuthError::NotAuthenticated` / `InvalidKey` / `KeychainUnavailable` → `process::exit(3)`
+- [X] T003 Write failing unit tests for `ApiKey` (non-empty invariant, redacted `Debug`/`Display`, `as_str()` raw access) inside `#[cfg(test)]` in `src/domain/value_objects/api_key.rs`; run `cargo test` and confirm RED
+- [X] T004 Implement `ApiKey` newtype in `src/domain/value_objects/api_key.rs`; register `pub mod api_key;` in `src/domain/value_objects/mod.rs`; confirm T003 GREEN
+- [X] T005 [P] Write failing unit tests for `AuthError` variants (`NotAuthenticated`, `InvalidKey`, `ValidationFailed`, `NetworkError`, `KeychainUnavailable`, `FileError`) inside `#[cfg(test)]` in `src/domain/errors.rs`; confirm RED
+- [X] T006 [P] Add `AuthError` enum to `src/domain/errors.rs` (using `thiserror`); confirm T005 GREEN
+- [X] T007 Write failing unit tests for `LinearApiClient` trait mock — add `#[cfg_attr(test, mockall::automock)]` stub and confirm the mock compiles — in `src/domain/repositories/linear_api_client.rs`; confirm RED
+- [X] T008 Define `LinearApiClient` trait (`validate_api_key(&self, key: &ApiKey) -> Result<Workspace, AuthError>`) with `#[cfg_attr(test, mockall::automock)]` in `src/domain/repositories/linear_api_client.rs`; register in `src/domain/repositories/mod.rs`; implement `LinearGraphqlClient` using reqwest + serde with `viewer { id name organization { name urlKey } }` query and `Authorization: Bearer` header in `src/infrastructure/graphql/client.rs`; update `src/infrastructure/graphql/mod.rs`; confirm T007 GREEN
+- [X] T009 [P] Add `ApplicationError::Auth(#[from] AuthError)` variant to `src/application/errors.rs`; confirm existing tests still GREEN
+- [X] T010 [P] Extend `run()` in `src/main.rs` to map `AuthError::NetworkError` / `ValidationFailed` → `process::exit(2)` and `AuthError::NotAuthenticated` / `InvalidKey` / `KeychainUnavailable` → `process::exit(3)`
 
 **Checkpoint**: `cargo test` passes — domain types, error variants, GraphQL client, and exit code mapping are ready.
 
@@ -52,22 +52,22 @@
 
 > **Write tests FIRST — confirm they FAIL before implementing**
 
-- [ ] T011 [P] [US1] Write failing unit tests for `Workspace` entity (non-empty invariants for `id`/`name`, field accessors) inside `#[cfg(test)]` in `src/domain/entities/workspace.rs`; confirm RED
-- [ ] T012 [P] [US1] Write failing unit tests for `AuthSession` and `CredentialSource` enum (construction, field accessors) inside `#[cfg(test)]` in `src/domain/entities/auth_session.rs`; confirm RED
+- [X] T011 [P] [US1] Write failing unit tests for `Workspace` entity (non-empty invariants for `id`/`name`, field accessors) inside `#[cfg(test)]` in `src/domain/entities/workspace.rs`; confirm RED
+- [X] T012 [P] [US1] Write failing unit tests for `AuthSession` and `CredentialSource` enum (construction, field accessors) inside `#[cfg(test)]` in `src/domain/entities/auth_session.rs`; confirm RED
 
 ### Implementation for User Story 1
 
-- [ ] T013 [P] [US1] Implement `Workspace` entity in `src/domain/entities/workspace.rs`; register in `src/domain/entities/mod.rs`; confirm T011 GREEN
-- [ ] T014 [P] [US1] Implement `AuthSession` entity and `CredentialSource` enum in `src/domain/entities/auth_session.rs`; register in `src/domain/entities/mod.rs`; confirm T012 GREEN
-- [ ] T015 [US1] Define `CredentialStore` trait and `StorageKind` enum in `src/domain/repositories/credential_store.rs`; register in `src/domain/repositories/mod.rs`
-- [ ] T016 [US1] Write failing integration tests for `KeyringCredentialStore` round-trip (store → retrieve → remove; `NoEntry` maps to `Ok(None)`; `PlatformFailure` maps to `AuthError::KeychainUnavailable`) in `tests/integration/auth_integration.rs`; confirm RED
-- [ ] T017 [US1] Implement `KeyringCredentialStore` in `src/infrastructure/auth/keyring_store.rs` (service `"linear-cli"`, username `"default"`); register in `src/infrastructure/auth/mod.rs`; confirm T016 GREEN
-- [ ] T018 [P] [US1] Write failing integration tests for `FileCredentialStore` round-trip (store with warning → retrieve → remove; file permissions `0o600`; default path `~/.config/linear-cli/credentials`) in `tests/integration/auth_integration.rs`; confirm RED
-- [ ] T019 [P] [US1] Implement `FileCredentialStore` in `src/infrastructure/auth/file_store.rs`; confirm T018 GREEN
-- [ ] T020 [US1] Write failing unit tests for `LoginUseCase` (valid key → validate → store → `Ok(Workspace)`; invalid key → `Err(AuthError::InvalidKey)`; network error → `Err(AuthError::NetworkError)`; credential present + `overwrite=false` → early return) inside `#[cfg(test)]` in `src/application/use_cases/login.rs` using `mockall` mocks for `MockCredentialStore` and `MockLinearApiClient`; confirm RED
-- [ ] T021 [US1] Implement `LoginUseCase` in `src/application/use_cases/login.rs`; register in `src/application/use_cases/mod.rs`; confirm T020 GREEN
-- [ ] T022 [US1] Implement `linear auth login [--store-file [PATH]]` subcommand in `src/cli/commands/auth.rs` — prompt for key on TTY or read from stdin pipe, build correct store based on flag, call `LoginUseCase`, handle overwrite confirmation prompt, output human text or JSON per `contracts/cli-auth.md`; handle Ctrl-C / SIGINT during the prompt by exiting cleanly with code 0 and no error output
-- [ ] T023 [US1] Register `Commands::Auth(AuthCommand)` in `src/cli/commands/mod.rs`; add `Commands::Auth` match arm in `src/main.rs`
+- [X] T013 [P] [US1] Implement `Workspace` entity in `src/domain/entities/workspace.rs`; register in `src/domain/entities/mod.rs`; confirm T011 GREEN
+- [X] T014 [P] [US1] Implement `AuthSession` entity and `CredentialSource` enum in `src/domain/entities/auth_session.rs`; register in `src/domain/entities/mod.rs`; confirm T012 GREEN
+- [X] T015 [US1] Define `CredentialStore` trait and `StorageKind` enum in `src/domain/repositories/credential_store.rs`; register in `src/domain/repositories/mod.rs`
+- [X] T016 [US1] Write failing integration tests for `KeyringCredentialStore` round-trip (store → retrieve → remove; `NoEntry` maps to `Ok(None)`; `PlatformFailure` maps to `AuthError::KeychainUnavailable`) in `tests/integration/auth_integration.rs`; confirm RED
+- [X] T017 [US1] Implement `KeyringCredentialStore` in `src/infrastructure/auth/keyring_store.rs` (service `"linear-cli"`, username `"default"`); register in `src/infrastructure/auth/mod.rs`; confirm T016 GREEN
+- [X] T018 [P] [US1] Write failing integration tests for `FileCredentialStore` round-trip (store with warning → retrieve → remove; file permissions `0o600`; default path `~/.config/linear-cli/credentials`) in `tests/integration/auth_integration.rs`; confirm RED
+- [X] T019 [P] [US1] Implement `FileCredentialStore` in `src/infrastructure/auth/file_store.rs`; confirm T018 GREEN
+- [X] T020 [US1] Write failing unit tests for `LoginUseCase` (valid key → validate → store → `Ok(Workspace)`; invalid key → `Err(AuthError::InvalidKey)`; network error → `Err(AuthError::NetworkError)`; credential present + `overwrite=false` → early return) inside `#[cfg(test)]` in `src/application/use_cases/login.rs` using `mockall` mocks for `MockCredentialStore` and `MockLinearApiClient`; confirm RED
+- [X] T021 [US1] Implement `LoginUseCase` in `src/application/use_cases/login.rs`; register in `src/application/use_cases/mod.rs`; confirm T020 GREEN
+- [X] T022 [US1] Implement `linear auth login [--store-file [PATH]]` subcommand in `src/cli/commands/auth.rs` — prompt for key on TTY or read from stdin pipe, build correct store based on flag, call `LoginUseCase`, handle overwrite confirmation prompt, output human text or JSON per `contracts/cli-auth.md`; handle Ctrl-C / SIGINT during the prompt by exiting cleanly with code 0 and no error output
+- [X] T023 [US1] Register `Commands::Auth(AuthCommand)` in `src/cli/commands/mod.rs`; add `Commands::Auth` match arm in `src/main.rs`
 
 **Checkpoint**: `cargo test` all green. Run `linear auth login` manually per `quickstart.md` to confirm end-to-end.
 
@@ -83,26 +83,26 @@
 
 > **Write tests FIRST — confirm they FAIL before implementing**
 
-- [ ] T024 [US2] Write failing unit tests for `resolve_auth` function (env var checked first; keychain second; `NotAuthenticated` when all empty; revoked key → `Err(InvalidKey)`; corrupted/invalid stored credential → store `remove()` called then `Err(NotAuthenticated)`) inside `#[cfg(test)]` in `src/application/use_cases/resolve_auth.rs` using `mockall` mocks; confirm RED
-- [ ] T025 [P] [US2] Write failing unit tests for `AuthStatusUseCase` (authenticated → `Ok(AuthSession)`; revoked key → `Err(AuthError::InvalidKey)`; no credential → `Err(AuthError::NotAuthenticated)`) inside `#[cfg(test)]` in `src/application/use_cases/auth_status.rs`; confirm RED
+- [X] T024 [US2] Write failing unit tests for `resolve_auth` function (env var checked first; keychain second; `NotAuthenticated` when all empty; revoked key → `Err(InvalidKey)`; corrupted/invalid stored credential → store `remove()` called then `Err(NotAuthenticated)`) inside `#[cfg(test)]` in `src/application/use_cases/resolve_auth.rs` using `mockall` mocks; confirm RED
+- [X] T025 [P] [US2] Write failing unit tests for `AuthStatusUseCase` (authenticated → `Ok(AuthSession)`; revoked key → `Err(AuthError::InvalidKey)`; no credential → `Err(AuthError::NotAuthenticated)`) inside `#[cfg(test)]` in `src/application/use_cases/auth_status.rs`; confirm RED
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Implement `resolve_auth` function in `src/application/use_cases/resolve_auth.rs`; register in `src/application/use_cases/mod.rs`; confirm T024 GREEN
-- [ ] T027 [US2] Implement `AuthStatusUseCase` in `src/application/use_cases/auth_status.rs`; confirm T025 GREEN
-- [ ] T028 [US2] Implement `linear auth status` subcommand in `src/cli/commands/auth.rs` (append to existing `AuthCommand`) — call `AuthStatusUseCase`, output human text or JSON per `contracts/cli-auth.md`; handle exit codes 2 and 3
-- [ ] T029 [P] [US2] Write failing integration test for `auth status` (authenticated → workspace output; no credential → exit 3; `LINEAR_API_KEY` env var takes precedence) in `tests/integration/auth_integration.rs`; confirm RED; then make GREEN
+- [X] T026 [US2] Implement `resolve_auth` function in `src/application/use_cases/resolve_auth.rs`; register in `src/application/use_cases/mod.rs`; confirm T024 GREEN
+- [X] T027 [US2] Implement `AuthStatusUseCase` in `src/application/use_cases/auth_status.rs`; confirm T025 GREEN
+- [X] T028 [US2] Implement `linear auth status` subcommand in `src/cli/commands/auth.rs` (append to existing `AuthCommand`) — call `AuthStatusUseCase`, output human text or JSON per `contracts/cli-auth.md`; handle exit codes 2 and 3
+- [X] T029 [P] [US2] Write failing integration test for `auth status` (authenticated → workspace output; no credential → exit 3; `LINEAR_API_KEY` env var takes precedence) in `tests/integration/auth_integration.rs`; confirm RED; then make GREEN
 
 ### FR-007 / SC-003 — Auth Guard on Existing Commands
 
 **Purpose**: Wire `resolve_auth` into all existing auth-requiring commands so FR-007 ("all commands that require auth MUST exit 3 with a guiding error") and SC-003 ("100% coverage") are achievable.
 
-- [ ] T030 [US2] Write failing unit tests for auth-guard behaviour in `src/cli/commands/issue.rs` — mock `resolve_auth` to return `Err(AuthError::NotAuthenticated)` and assert `run_issue` propagates exit 3; confirm RED
-- [ ] T031 [P] [US2] Write failing unit tests for auth-guard behaviour in `src/cli/commands/team.rs` — same pattern; confirm RED
-- [ ] T032 [US2] Wire `resolve_auth` into `run_issue` in `src/cli/commands/issue.rs` — call at function entry, propagate `AuthError` → exit 3 via `main.rs` mapping; confirm T030 GREEN
-- [ ] T033 [P] [US2] Wire `resolve_auth` into `run_team` in `src/cli/commands/team.rs`; confirm T031 GREEN
-- [ ] T034 [P] [US2] Write failing integration tests in `tests/integration/auth_integration.rs` confirming `linear issue list` and `linear team list` each exit 3 with a guiding error when no credential is present (FR-007, SC-003); confirm RED; then make GREEN
-- [ ] T035 [P] [US2] Write integration test in `tests/integration/auth_integration.rs` confirming `LINEAR_API_KEY` env var allows `issue list` and `team list` without prior `auth login` (US1-AC4, FR-010, FR-011); confirm RED; then make GREEN
+- [X] T030 [US2] Write failing unit tests for auth-guard behaviour in `src/cli/commands/issue.rs` — mock `resolve_auth` to return `Err(AuthError::NotAuthenticated)` and assert `run_issue` propagates exit 3; confirm RED
+- [X] T031 [P] [US2] Write failing unit tests for auth-guard behaviour in `src/cli/commands/team.rs` — same pattern; confirm RED
+- [X] T032 [US2] Wire `resolve_auth` into `run_issue` in `src/cli/commands/issue.rs` — call at function entry, propagate `AuthError` → exit 3 via `main.rs` mapping; confirm T030 GREEN
+- [X] T033 [P] [US2] Wire `resolve_auth` into `run_team` in `src/cli/commands/team.rs`; confirm T031 GREEN
+- [X] T034 [P] [US2] Write failing integration tests in `tests/integration/auth_integration.rs` confirming `linear issue list` and `linear team list` each exit 3 with a guiding error when no credential is present (FR-007, SC-003); confirm RED; then make GREEN
+- [X] T035 [P] [US2] Write integration test in `tests/integration/auth_integration.rs` confirming `LINEAR_API_KEY` env var allows `issue list` and `team list` without prior `auth login` (US1-AC4, FR-010, FR-011); confirm RED; then make GREEN
 
 **Checkpoint**: `linear auth status` works independently. All existing commands guard auth correctly. `cargo test` all green.
 
@@ -118,13 +118,13 @@
 
 > **Write tests FIRST — confirm they FAIL before implementing**
 
-- [ ] T036 [US3] Write failing unit tests for `LogoutUseCase` (credential present → removes from all stores → `Ok(removed_list)`; no credential → `Ok(empty)`; `dry_run=true` → returns what-would-be-removed without calling `remove()`) inside `#[cfg(test)]` in `src/application/use_cases/logout.rs` using `mockall` mocks; confirm RED
+- [X] T036 [US3] Write failing unit tests for `LogoutUseCase` (credential present → removes from all stores → `Ok(removed_list)`; no credential → `Ok(empty)`; `dry_run=true` → returns what-would-be-removed without calling `remove()`) inside `#[cfg(test)]` in `src/application/use_cases/logout.rs` using `mockall` mocks; confirm RED
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Implement `LogoutUseCase` in `src/application/use_cases/logout.rs`; register in `src/application/use_cases/mod.rs`; confirm T036 GREEN
-- [ ] T038 [US3] Implement `linear auth logout [--dry-run]` subcommand in `src/cli/commands/auth.rs` (append to existing `AuthCommand`) — collect configured stores, call `LogoutUseCase`, output human text or JSON per `contracts/cli-auth.md`
-- [ ] T039 [P] [US3] Write failing integration test for `auth logout` (credential present → removed; dry-run → no deletion; no credential → exit 0 with informational message) in `tests/integration/auth_integration.rs`; confirm RED; then make GREEN
+- [X] T037 [US3] Implement `LogoutUseCase` in `src/application/use_cases/logout.rs`; register in `src/application/use_cases/mod.rs`; confirm T036 GREEN
+- [X] T038 [US3] Implement `linear auth logout [--dry-run]` subcommand in `src/cli/commands/auth.rs` (append to existing `AuthCommand`) — collect configured stores, call `LogoutUseCase`, output human text or JSON per `contracts/cli-auth.md`
+- [X] T039 [P] [US3] Write failing integration test for `auth logout` (credential present → removed; dry-run → no deletion; no credential → exit 0 with informational message) in `tests/integration/auth_integration.rs`; confirm RED; then make GREEN
 
 **Checkpoint**: All three auth commands (`login`, `status`, `logout`) fully functional. All existing commands guard auth correctly. `cargo test --all` green.
 
@@ -134,11 +134,11 @@
 
 **Purpose**: Observability, contract validation, and CI readiness.
 
-- [ ] T040 [P] Add `#[tracing::instrument(skip(key))]` / `tracing::debug!` to all infrastructure auth operations in `src/infrastructure/auth/keyring_store.rs`, `src/infrastructure/auth/file_store.rs`, and `src/infrastructure/graphql/client.rs`; run with `-vvv` and confirm tokens show as `[REDACTED]` in log output
-- [ ] T041 [P] Write e2e test scaffold in `tests/e2e/auth_e2e.rs` — full login/status/logout cycle guarded by `std::env::var("LINEAR_TEST_API_KEY")` check at test start; skip gracefully if var absent
-- [ ] T042 Add `insta` snapshot tests for JSON output of all three auth commands in `tests/integration/auth_integration.rs`; validate schemas match `contracts/cli-auth.md`
-- [ ] T043 Run `cargo clippy -- -D warnings`, `cargo fmt --check`, `cargo test --all`; resolve all issues
-- [ ] T044 Walk through success criteria SC-001 through SC-006 from `specs/002-linear-api-auth/spec.md` and add assertions or manual verification notes
+- [X] T040 [P] Add `#[tracing::instrument(skip(key))]` / `tracing::debug!` to all infrastructure auth operations in `src/infrastructure/auth/keyring_store.rs`, `src/infrastructure/auth/file_store.rs`, and `src/infrastructure/graphql/client.rs`; run with `-vvv` and confirm tokens show as `[REDACTED]` in log output
+- [X] T041 [P] Write e2e test scaffold in `tests/e2e/auth_e2e.rs` — full login/status/logout cycle guarded by `std::env::var("LINEAR_TEST_API_KEY")` check at test start; skip gracefully if var absent
+- [X] T042 Add `insta` snapshot tests for JSON output of all three auth commands in `tests/integration/auth_integration.rs`; validate schemas match `contracts/cli-auth.md`
+- [X] T043 Run `cargo clippy -- -D warnings`, `cargo fmt --check`, `cargo test --all`; resolve all issues
+- [X] T044 Walk through success criteria SC-001 through SC-006 from `specs/002-linear-api-auth/spec.md` and add assertions or manual verification notes
 
 ---
 

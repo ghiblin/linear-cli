@@ -1,0 +1,9 @@
+---
+source: tests/integration/auth_integration.rs
+expression: "serde_json::to_string_pretty(&json).unwrap()"
+---
+{
+  "dry_run": true,
+  "logged_out": false,
+  "would_remove": []
+}
