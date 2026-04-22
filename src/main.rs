@@ -52,7 +52,9 @@ async fn main() {
         Ok(()) => {}
         Err(e) => {
             let code = exit_code_for(&e);
-            eprintln!("error: {e}");
+            if code > 0 {
+                eprintln!("error: {e}");
+            }
             process::exit(code);
         }
     }
@@ -80,6 +82,7 @@ async fn run(cli: &Cli) -> anyhow::Result<()> {
 fn exit_code_for(e: &anyhow::Error) -> i32 {
     if let Some(ApplicationError::Auth(auth_err)) = e.downcast_ref::<ApplicationError>() {
         return match auth_err {
+            AuthError::Cancelled => 0,
             AuthError::NetworkError(_) | AuthError::ValidationFailed(_) => 2,
             AuthError::NotAuthenticated
             | AuthError::InvalidKey

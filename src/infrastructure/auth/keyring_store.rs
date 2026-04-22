@@ -65,29 +65,20 @@ mod tests {
 
     use super::*;
 
-    // Both tests mutate the same keychain entry — serialize them to avoid flakiness.
+    // These tests require real keychain access and are skipped in normal runs
+    // to avoid system prompts. Run with `cargo test -- --ignored` to execute them.
+    // Keychain behaviour is covered at the binary level by the integration tests.
     static KEYCHAIN_LOCK: Mutex<()> = Mutex::new(());
 
     #[tokio::test]
+    #[ignore]
     async fn keyring_roundtrip() {
-        if std::env::var("SKIP_KEYCHAIN_TESTS").is_ok() {
-            return;
-        }
         let _guard = KEYCHAIN_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let store = KeyringCredentialStore::new();
         let key = ApiKey::new("test-keyring-roundtrip-12345").unwrap();
 
-        // Skip if the keychain is not accessible in this environment.
-        if store.store(&key).await.is_err() {
-            return;
-        }
-
+        store.store(&key).await.unwrap();
         let retrieved = store.retrieve().await.unwrap();
-        // Keychain may not be readable (e.g. unsigned binary, sandboxed env) — skip rather than fail.
-        if retrieved.is_none() {
-            let _ = store.remove().await;
-            return;
-        }
         assert_eq!(retrieved.unwrap().as_str(), key.as_str());
 
         store.remove().await.unwrap();
@@ -96,16 +87,13 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn no_entry_maps_to_none() {
-        if std::env::var("SKIP_KEYCHAIN_TESTS").is_ok() {
-            return;
-        }
         let _guard = KEYCHAIN_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let store = KeyringCredentialStore::new();
         let _ = store.remove().await;
-        // retrieve() after remove should be None or Err (keychain unavailable), not a stored value.
         match store.retrieve().await {
-            Ok(None) | Err(_) => {} // expected
+            Ok(None) | Err(_) => {}
             Ok(Some(_)) => panic!("expected no entry after remove"),
         }
     }

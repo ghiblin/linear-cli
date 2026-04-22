@@ -111,7 +111,7 @@ async fn run_login(api_key_arg: Option<&str>, store_file: Option<&str>, force_js
             if answer == "y" || answer == "yes" {
                 true
             } else {
-                return Err(ApplicationError::Auth(AuthError::NotAuthenticated));
+                return Err(ApplicationError::Auth(AuthError::Cancelled));
             }
         }
     } else {
@@ -195,7 +195,10 @@ async fn run_status(force_json: bool) -> Result<(), ApplicationError> {
         .ok()
         .and_then(|k| ApiKey::new(k).ok());
 
-    let stores: Vec<Box<dyn CredentialStore>> = vec![Box::new(KeyringCredentialStore::new())];
+    let stores: Vec<Box<dyn CredentialStore>> = vec![
+        Box::new(KeyringCredentialStore::new()),
+        Box::new(FileCredentialStore::new()),
+    ];
     let client = Arc::new(LinearGraphqlClient::new());
 
     match resolve_auth(env_key, stores, client).await {
@@ -271,7 +274,10 @@ async fn run_status(force_json: bool) -> Result<(), ApplicationError> {
 async fn run_logout(dry_run: bool, force_json: bool) -> Result<(), ApplicationError> {
     use crate::application::use_cases::logout::LogoutUseCase;
 
-    let stores: Vec<Box<dyn CredentialStore>> = vec![Box::new(KeyringCredentialStore::new())];
+    let stores: Vec<Box<dyn CredentialStore>> = vec![
+        Box::new(KeyringCredentialStore::new()),
+        Box::new(FileCredentialStore::new()),
+    ];
     let use_case = LogoutUseCase::new();
     let result = use_case
         .execute(stores, dry_run)

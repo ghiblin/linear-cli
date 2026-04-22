@@ -20,6 +20,9 @@ pub enum AuthError {
 
     #[error("credential file error: {0}")]
     FileError(String),
+
+    #[error("cancelled")]
+    Cancelled,
 }
 
 #[derive(Debug, Error)]
