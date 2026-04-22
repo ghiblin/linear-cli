@@ -77,7 +77,7 @@ impl LinearApiClient for LinearGraphqlClient {
         let response = self
             .http
             .post(LINEAR_API_URL)
-            .header("Authorization", format!("Bearer {}", key.as_str()))
+            .header("Authorization", key.as_str())
             .header("Content-Type", "application/json")
             .json(&GraphqlRequest {
                 query: VIEWER_QUERY,
