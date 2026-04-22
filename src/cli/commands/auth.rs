@@ -32,6 +32,8 @@ pub struct AuthCommand {
 pub enum AuthSubcommand {
     #[command(about = "Store a Linear API key after remote validation")]
     Login {
+        #[arg(long, value_name = "KEY", help = "API key (reads from stdin if omitted)")]
+        api_key: Option<String>,
         #[arg(
             long,
             value_name = "PATH",
@@ -59,7 +61,7 @@ struct WorkspaceOutput {
 
 pub async fn run_auth(cmd: &AuthCommand, force_json: bool) -> Result<(), ApplicationError> {
     match &cmd.subcommand {
-        AuthSubcommand::Login { store_file } => run_login(store_file.as_deref(), force_json).await,
+        AuthSubcommand::Login { api_key, store_file } => run_login(api_key.as_deref(), store_file.as_deref(), force_json).await,
         AuthSubcommand::Status => run_status(force_json).await,
         AuthSubcommand::Logout { dry_run } => run_logout(*dry_run, force_json).await,
     }
@@ -86,8 +88,11 @@ fn make_store(
     }
 }
 
-async fn run_login(store_file: Option<&str>, force_json: bool) -> Result<(), ApplicationError> {
-    let api_key = read_api_key(force_json)?;
+async fn run_login(api_key_arg: Option<&str>, store_file: Option<&str>, force_json: bool) -> Result<(), ApplicationError> {
+    let api_key = match api_key_arg {
+        Some(raw) => ApiKey::new(raw).map_err(|e| ApplicationError::Auth(AuthError::ValidationFailed(e.to_string())))?,
+        None => read_api_key(force_json)?,
+    };
     let (check_store, storage_kind, storage_path) = make_store(store_file);
 
     let existing = check_store
@@ -150,17 +155,16 @@ async fn run_login(store_file: Option<&str>, force_json: bool) -> Result<(), App
 
 fn read_api_key(force_json: bool) -> Result<ApiKey, ApplicationError> {
     let is_tty = std::io::stdin().is_terminal();
-    let raw = if is_tty && !force_json {
+    if force_json || !is_tty {
+        return Err(ApplicationError::Auth(AuthError::ValidationFailed(
+            "--api-key is required in non-interactive mode".to_string(),
+        )));
+    }
+    let raw = {
         eprint!("Enter your Linear API key: ");
         let mut buf = String::new();
         let _ = std::io::stdin().read_line(&mut buf);
         buf.trim().to_string()
-    } else {
-        let mut line = String::new();
-        std::io::stdin()
-            .read_line(&mut line)
-            .map_err(|e| ApplicationError::Auth(AuthError::ValidationFailed(e.to_string())))?;
-        line.trim().to_string()
     };
 
     if raw.is_empty() {
