@@ -122,6 +122,7 @@ fn auth_status_json_unauthenticated_snapshot() {
     let out = linear_bin()
         .args(["auth", "status", "--json"])
         .env_remove("LINEAR_API_KEY")
+        .env("SKIP_KEYCHAIN_TESTS", "1")
         .output()
         .unwrap();
 
@@ -148,6 +149,7 @@ fn auth_logout_json_no_credentials_snapshot() {
     let out = linear_bin()
         .args(["auth", "logout", "--json"])
         .env_remove("LINEAR_API_KEY")
+        .env("SKIP_KEYCHAIN_TESTS", "1")
         .output()
         .unwrap();
 
@@ -172,6 +174,7 @@ fn auth_logout_dry_run_json_snapshot() {
     let out = linear_bin()
         .args(["auth", "logout", "--dry-run", "--json"])
         .env_remove("LINEAR_API_KEY")
+        .env("SKIP_KEYCHAIN_TESTS", "1")
         .output()
         .unwrap();
 

@@ -24,6 +24,10 @@ struct VersionInfo {
 
 #[tokio::main]
 async fn main() {
+    if std::env::var("SKIP_KEYCHAIN_TESTS").is_ok() {
+        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+    }
+
     let cli = match Cli::try_parse() {
         Ok(c) => c,
         Err(e) => {

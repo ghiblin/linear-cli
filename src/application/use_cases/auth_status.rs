@@ -35,7 +35,7 @@ mod tests {
     use std::sync::Arc;
 
     use crate::domain::{
-        entities::workspace::Workspace,
+        entities::{login_result::LoginResult, workspace::Workspace},
         errors::AuthError,
         repositories::{
             credential_store::MockCredentialStore, linear_api_client::MockLinearApiClient,
@@ -43,20 +43,21 @@ mod tests {
         value_objects::api_key::ApiKey,
     };
 
-    fn make_workspace() -> Workspace {
-        Workspace::new("org-1", "Acme", "acme").unwrap()
+    fn make_login_result() -> LoginResult {
+        let ws = Workspace::new("org-1", "Acme", "acme").unwrap();
+        LoginResult::new("user-1", "Alice", ws)
     }
 
     #[tokio::test]
     async fn authenticated_returns_auth_session() {
         let key = ApiKey::new("valid-key").unwrap();
-        let ws = make_workspace();
+        let lr = make_login_result();
 
         let mut mock_client = MockLinearApiClient::new();
-        let ws_clone = ws.clone();
+        let lr_clone = lr.clone();
         mock_client
             .expect_validate_api_key()
-            .returning(move |_| Ok(ws_clone.clone()));
+            .returning(move |_| Ok(lr_clone.clone()));
 
         let mut mock_store = MockCredentialStore::new();
         mock_store

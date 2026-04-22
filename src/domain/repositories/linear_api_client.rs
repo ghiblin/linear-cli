@@ -1,14 +1,14 @@
 use async_trait::async_trait;
 
 use crate::domain::{
-    entities::workspace::Workspace, errors::AuthError, value_objects::api_key::ApiKey,
+    entities::login_result::LoginResult, errors::AuthError, value_objects::api_key::ApiKey,
 };
 
 #[allow(dead_code)]
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait LinearApiClient: Send + Sync {
-    async fn validate_api_key(&self, key: &ApiKey) -> Result<Workspace, AuthError>;
+    async fn validate_api_key(&self, key: &ApiKey) -> Result<LoginResult, AuthError>;
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::domain::{
-    entities::workspace::Workspace,
+    entities::login_result::LoginResult,
     errors::AuthError,
     repositories::{credential_store::CredentialStore, linear_api_client::LinearApiClient},
     value_objects::api_key::ApiKey,
@@ -23,7 +23,7 @@ impl LoginUseCase {
         api_key: ApiKey,
         store: Box<dyn CredentialStore>,
         overwrite: bool,
-    ) -> Result<Workspace, AuthError> {
+    ) -> Result<LoginResult, AuthError> {
         if !overwrite {
             if let Some(_existing) = store.retrieve().await? {
                 return Err(AuthError::NotAuthenticated);
@@ -43,7 +43,7 @@ mod tests {
     use mockall::predicate;
 
     use crate::domain::{
-        entities::workspace::Workspace,
+        entities::{login_result::LoginResult, workspace::Workspace},
         errors::AuthError,
         repositories::{
             credential_store::MockCredentialStore, linear_api_client::MockLinearApiClient,
@@ -53,20 +53,21 @@ mod tests {
 
     use super::LoginUseCase;
 
-    fn make_workspace() -> Workspace {
-        Workspace::new("org-1", "Acme", "acme").unwrap()
+    fn make_login_result() -> LoginResult {
+        let ws = Workspace::new("org-1", "Acme", "acme").unwrap();
+        LoginResult::new("user-1", "Alice", ws)
     }
 
     #[tokio::test]
-    async fn valid_key_validates_stores_and_returns_workspace() {
+    async fn valid_key_validates_stores_and_returns_login_result() {
         let key = ApiKey::new("valid-key").unwrap();
-        let ws = make_workspace();
+        let login_result = make_login_result();
 
         let mut mock_client = MockLinearApiClient::new();
-        let ws_clone = ws.clone();
+        let lr_clone = login_result.clone();
         mock_client
             .expect_validate_api_key()
-            .returning(move |_| Ok(ws_clone.clone()));
+            .returning(move |_| Ok(lr_clone.clone()));
 
         let mut mock_store = MockCredentialStore::new();
         mock_store.expect_retrieve().returning(|| Ok(None));
@@ -78,7 +79,7 @@ mod tests {
         let use_case = LoginUseCase::new(Arc::new(mock_client));
         let result = use_case.execute(key, Box::new(mock_store), false).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), ws);
+        assert_eq!(result.unwrap().user_name(), "Alice");
     }
 
     #[tokio::test]
@@ -136,13 +137,13 @@ mod tests {
     async fn credential_exists_with_overwrite_validates_and_stores() {
         let key = ApiKey::new("new-key").unwrap();
         let existing_key = ApiKey::new("existing-key").unwrap();
-        let ws = make_workspace();
+        let lr = make_login_result();
 
         let mut mock_client = MockLinearApiClient::new();
-        let ws_clone = ws.clone();
+        let lr_clone = lr.clone();
         mock_client
             .expect_validate_api_key()
-            .returning(move |_| Ok(ws_clone.clone()));
+            .returning(move |_| Ok(lr_clone.clone()));
 
         let mut mock_store = MockCredentialStore::new();
         mock_store

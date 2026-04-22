@@ -14,10 +14,10 @@ pub async fn resolve_auth(
     client: Arc<dyn LinearApiClient>,
 ) -> Result<AuthSession, AuthError> {
     if let Some(key) = env_key {
-        let workspace = client.validate_api_key(&key).await?;
+        let login_result = client.validate_api_key(&key).await?;
         return Ok(AuthSession::new(
             key,
-            Some(workspace),
+            Some(login_result.workspace().clone()),
             CredentialSource::EnvVar,
         ));
     }
@@ -25,7 +25,7 @@ pub async fn resolve_auth(
     for store in &stores {
         match store.retrieve().await? {
             Some(key) => match client.validate_api_key(&key).await {
-                Ok(workspace) => {
+                Ok(login_result) => {
                     let source = match store.kind() {
                         crate::domain::repositories::credential_store::StorageKind::Keychain => {
                             CredentialSource::Keychain
@@ -34,7 +34,11 @@ pub async fn resolve_auth(
                             CredentialSource::File(p)
                         }
                     };
-                    return Ok(AuthSession::new(key, Some(workspace), source));
+                    return Ok(AuthSession::new(
+                        key,
+                        Some(login_result.workspace().clone()),
+                        source,
+                    ));
                 }
                 Err(AuthError::InvalidKey) => {
                     store.remove().await.ok();
@@ -55,27 +59,28 @@ mod tests {
 
     use super::*;
     use crate::domain::{
-        entities::workspace::Workspace,
+        entities::{login_result::LoginResult, workspace::Workspace},
         repositories::{
             credential_store::MockCredentialStore, linear_api_client::MockLinearApiClient,
         },
         value_objects::api_key::ApiKey,
     };
 
-    fn make_workspace() -> Workspace {
-        Workspace::new("org-1", "Acme", "acme").unwrap()
+    fn make_login_result() -> LoginResult {
+        let ws = Workspace::new("org-1", "Acme", "acme").unwrap();
+        LoginResult::new("user-1", "Alice", ws)
     }
 
     #[tokio::test]
     async fn env_var_checked_first() {
         let env_key = ApiKey::new("env-key").unwrap();
-        let ws = make_workspace();
+        let lr = make_login_result();
 
         let mut mock_client = MockLinearApiClient::new();
-        let ws_clone = ws.clone();
+        let lr_clone = lr.clone();
         mock_client
             .expect_validate_api_key()
-            .returning(move |_| Ok(ws_clone.clone()));
+            .returning(move |_| Ok(lr_clone.clone()));
 
         let result = resolve_auth(Some(env_key), vec![], Arc::new(mock_client)).await;
         assert!(result.is_ok());
@@ -114,13 +119,13 @@ mod tests {
     #[tokio::test]
     async fn keychain_source_returns_keychain_session() {
         let stored_key = ApiKey::new("valid-key").unwrap();
-        let ws = make_workspace();
+        let lr = make_login_result();
 
         let mut mock_client = MockLinearApiClient::new();
-        let ws_clone = ws.clone();
+        let lr_clone = lr.clone();
         mock_client
             .expect_validate_api_key()
-            .returning(move |_| Ok(ws_clone.clone()));
+            .returning(move |_| Ok(lr_clone.clone()));
 
         let mut mock_store = MockCredentialStore::new();
         mock_store

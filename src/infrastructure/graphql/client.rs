@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::domain::{
-    entities::workspace::Workspace, errors::AuthError,
-    repositories::linear_api_client::LinearApiClient, value_objects::api_key::ApiKey,
+    entities::{login_result::LoginResult, workspace::Workspace},
+    errors::AuthError,
+    repositories::linear_api_client::LinearApiClient,
+    value_objects::api_key::ApiKey,
 };
 
 const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
@@ -42,7 +44,6 @@ struct ViewerData {
 #[derive(Deserialize)]
 struct ViewerPayload {
     id: String,
-    #[allow(dead_code)]
     name: String,
     organization: OrganizationPayload,
 }
@@ -73,7 +74,7 @@ const VIEWER_QUERY: &str =
 #[async_trait]
 impl LinearApiClient for LinearGraphqlClient {
     #[instrument(skip(self, key), fields(redacted_key = %key))]
-    async fn validate_api_key(&self, key: &ApiKey) -> Result<Workspace, AuthError> {
+    async fn validate_api_key(&self, key: &ApiKey) -> Result<LoginResult, AuthError> {
         let response = self
             .http
             .post(LINEAR_API_URL)
@@ -115,11 +116,13 @@ impl LinearApiClient for LinearGraphqlClient {
             .ok_or_else(|| AuthError::ValidationFailed("empty response from Linear API".into()))?
             .viewer;
 
-        Workspace::new(
-            viewer.id,
+        let workspace = Workspace::new(
+            viewer.id.clone(),
             viewer.organization.name,
             viewer.organization.url_key,
         )
-        .map_err(|e| AuthError::ValidationFailed(e.to_string()))
+        .map_err(|e| AuthError::ValidationFailed(e.to_string()))?;
+
+        Ok(LoginResult::new(viewer.id, viewer.name, workspace))
     }
 }

@@ -122,32 +122,46 @@ async fn run_login(api_key_arg: Option<&str>, store_file: Option<&str>, force_js
     let client = Arc::new(LinearGraphqlClient::new());
     let use_case = LoginUseCase::new(client);
 
-    let workspace = use_case
+    let login_result = use_case
         .execute(api_key, fresh_store, overwrite)
         .await
         .map_err(ApplicationError::Auth)?;
 
     if should_use_json(force_json) {
         #[derive(Serialize)]
+        struct UserOutput {
+            id: String,
+            name: String,
+        }
+        #[derive(Serialize)]
         struct LoginSuccessOutput {
             authenticated: bool,
+            user: UserOutput,
             workspace: WorkspaceOutput,
             storage: &'static str,
             storage_path: Option<String>,
         }
         let output = LoginSuccessOutput {
             authenticated: true,
+            user: UserOutput {
+                id: login_result.user_id().to_string(),
+                name: login_result.user_name().to_string(),
+            },
             workspace: WorkspaceOutput {
-                id: workspace.id().to_string(),
-                name: workspace.name().to_string(),
-                url_key: workspace.url_key().to_string(),
+                id: login_result.workspace().id().to_string(),
+                name: login_result.workspace().name().to_string(),
+                url_key: login_result.workspace().url_key().to_string(),
             },
             storage: storage_kind,
             storage_path,
         };
         println!("{}", format_json(&output));
     } else {
-        println!("\u{2713} Authenticated (workspace: {})", workspace.name());
+        println!(
+            "\u{2713} Authenticated as {} (workspace: {})",
+            login_result.user_name(),
+            login_result.workspace().name()
+        );
     }
 
     Ok(())
