@@ -95,6 +95,7 @@ A user wants to archive (soft-close) a project that is no longer active, removin
 ### Edge Cases
 
 - When the API is unreachable during any project command, the CLI MUST exit with code 2 and a network error on stderr.
+- When the Linear API responds with HTTP 429 (rate limited), the CLI MUST retry the request up to 3 times using exponential backoff (e.g. 1s, 2s, 4s). If all retries are exhausted, it MUST exit with code 2 and a "rate limited" error on stderr.
 - When the project list spans multiple pages, the CLI MUST either paginate automatically (returning all results) or support `--limit` and `--cursor` flags for manual pagination.
 - When a team filter is applied to `project list` (e.g., `--team <id>`), only projects belonging to that team are returned.
 - When an update command supplies an invalid state value (not one of the recognised states), the CLI MUST reject it locally before calling the API, exit with code 1, and list valid states in the error message.
@@ -104,18 +105,21 @@ A user wants to archive (soft-close) a project that is no longer active, removin
 
 ### Functional Requirements
 
-- **FR-001**: The CLI MUST provide a `project list` command that returns all projects accessible to the authenticated user, including name, state, team(s), lead, target date, and progress.
+- **FR-001**: The CLI MUST provide a `project list` command that returns projects accessible to the authenticated user, including name, state, team(s), lead, target date, and progress. Results MUST be sorted by `updatedAt` descending by default.
 - **FR-002**: The `project list` command MUST support a `--team <id>` filter to restrict results to a specific team.
-- **FR-003**: The `project list` command MUST handle pagination transparently, returning all results by default; it MUST also support `--limit <n>` and `--cursor <token>` flags for consumers that prefer manual pagination.
-- **FR-004**: The CLI MUST provide a `project get <id>` command that returns the full record for a single project identified by its unique identifier.
+- **FR-003**: The `project list` command MUST default to returning the first 50 projects. It MUST support an `--all` flag that auto-fetches all pages (honouring the rate-limit retry policy from FR-013). It MUST also support `--limit <n>` and `--cursor <token>` flags for manual pagination.
+- **FR-004**: The CLI MUST provide a `project get <id>` command that returns the full record for a single project identified by its unique identifier. The `<id>` argument MUST accept both a Linear UUID and a human-readable display ID (e.g. `PRJ-123`); the CLI auto-detects the format by pattern and resolves display IDs to UUIDs via a lookup before calling the API.
 - **FR-005**: The CLI MUST provide a `project create` command accepting `--name <string>` (required) and `--team <id>` (required, repeatable for multiple teams), with optional `--description <string>`, `--lead <user-id>`, `--start-date <YYYY-MM-DD>`, and `--target-date <YYYY-MM-DD>` flags.
-- **FR-006**: The CLI MUST provide a `project update <id>` command accepting any combination of `--name`, `--description`, `--state`, `--lead`, `--start-date`, and `--target-date` flags; at least one flag MUST be required.
+- **FR-006**: The CLI MUST provide a `project update <id>` command accepting any combination of `--name`, `--description`, `--state`, `--lead`, `--start-date`, and `--target-date` flags; at least one flag MUST be required. The `<id>` argument accepts both UUID and display ID (see FR-004).
 - **FR-007**: The `--state` flag on `project update` MUST only accept the values `planned`, `started`, `paused`, `completed`, and `cancelled`; invalid values MUST be rejected locally before any API call.
-- **FR-008**: The CLI MUST provide a `project archive <id>` command that transitions the project to archived state in Linear.
+- **FR-008**: The CLI MUST provide a `project archive <id>` command that transitions the project to archived state in Linear. The `<id>` argument accepts both UUID and display ID (see FR-004).
 - **FR-009**: Every mutating command (`create`, `update`, `archive`) MUST support a `--dry-run` flag that reports the intended operation without executing it.
 - **FR-010**: All `project` commands MUST produce human-readable output when stdout is a TTY and machine-readable JSON when stdout is a pipe or `--output json` is passed.
 - **FR-011**: All `project` commands MUST emit errors on stderr and never mix error text with data output on stdout.
 - **FR-012**: All `project` commands MUST exit with code 0 on success, code 1 on user/input error, code 2 on API/network error, and code 3 on authentication error.
+- **FR-013**: All `project` commands MUST retry HTTP 429 responses up to 3 times with exponential backoff (1 s, 2 s, 4 s). After exhausting retries the command MUST exit with code 2 and emit a "rate limited" error on stderr.
+- **FR-014**: All `project` commands MUST support a `--verbose` flag that prints human-readable step-by-step progress (e.g. "Fetching projects…", "Page 2 of 3…") to stderr without affecting stdout output.
+- **FR-015**: All `project` commands MUST support a `--debug` flag that prints the raw GraphQL request body and response payload to stderr. `--debug` implies `--verbose`.
 
 ### Key Entities
 
@@ -128,12 +132,22 @@ A user wants to archive (soft-close) a project that is no longer active, removin
 
 ### Measurable Outcomes
 
-- **SC-001**: A user can retrieve a full list of their workspace projects in under 5 seconds on a standard internet connection, regardless of project count (up to Linear API pagination limits).
+- **SC-001**: A user can retrieve the default first page (up to 50 projects) in under 3 seconds on a standard internet connection. Full workspace retrieval via `--all` completes in under 5 seconds for workspaces with up to 500 projects.
 - **SC-002**: A user can complete the full create-update-archive lifecycle for a single project in under 60 seconds using only CLI commands.
 - **SC-003**: All five project commands (`list`, `get`, `create`, `update`, `archive`) produce valid, schema-stable JSON output when `--output json` is passed — verifiable by schema validation in CI.
 - **SC-004**: 100% of user-input errors (missing required flags, invalid state values) are caught and reported locally before any API call is made — verifiable by running commands without network access.
 - **SC-005**: Dry-run mode for all mutating commands completes without making any state change in Linear — verifiable by comparing Linear project state before and after a `--dry-run` invocation.
 - **SC-006**: All project commands correctly report authentication errors (exit code 3) when credentials are absent — verifiable without a Linear account.
+
+## Clarifications
+
+### Session 2026-04-23
+
+- Q: What format does `<id>` accept in project commands (`get`, `update`, `archive`)? → A: Both UUID and human-readable display ID (e.g. `PRJ-123`) are accepted; the CLI auto-detects format by pattern matching.
+- Q: How should the CLI handle Linear API rate limits (HTTP 429)? → A: Retry up to 3 times with exponential backoff; if all retries are exhausted, exit with code 2 and a descriptive "rate limited" error on stderr.
+- Q: What is the default pagination behaviour for `project list`? → A: Default cap of 50 results per invocation; `--all` flag auto-fetches all pages; `--limit` and `--cursor` allow manual pagination.
+- Q: Should project commands support a verbose/debug flag for troubleshooting? → A: Yes — both `--verbose` (human-readable step-by-step progress on stderr) and `--debug` (raw GraphQL request + response on stderr) with distinct semantics.
+- Q: What is the default sort order for `project list`? → A: `updatedAt` descending — most recently active projects first, matching Linear's own UI default.
 
 ## Assumptions
 
