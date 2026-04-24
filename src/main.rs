@@ -68,6 +68,9 @@ async fn run(cli: &Cli) -> anyhow::Result<()> {
         Some(Commands::Issue(cmd)) => {
             cli::commands::issue::run_issue(cmd, cli.json).await?;
         }
+        Some(Commands::Project(cmd)) => {
+            cli::commands::project::run_project(cmd, cli.json).await?;
+        }
         Some(Commands::Team(cmd)) => {
             cli::commands::team::run_team(cmd, cli.json).await?;
         }
