@@ -167,7 +167,6 @@ pub async fn update_project(
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 pub struct ProjectArchivePayload {
     pub success: bool,
     pub entity: Option<ArchivedProjectEntity>,
@@ -210,6 +209,11 @@ pub async fn archive_project(
     let data = resp.data.ok_or_else(|| {
         crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
     })?;
+    if !data.project_archive.success {
+        return Err(crate::domain::errors::DomainError::InvalidInput(
+            "archive operation reported failure".to_string(),
+        ));
+    }
     Ok(data
         .project_archive
         .entity

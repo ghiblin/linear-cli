@@ -107,7 +107,7 @@ pub struct PageInfoNode {
 
 const PROJECTS_QUERY: &str = r#"
 query Projects($first: Int!, $after: String) {
-  projects(first: $first, after: $after) {
+  projects(first: $first, after: $after, orderBy: updatedAt) {
     nodes {
       id
       name
@@ -129,7 +129,7 @@ query Projects($first: Int!, $after: String) {
 const TEAM_PROJECTS_QUERY: &str = r#"
 query TeamProjects($teamId: String!, $first: Int!, $after: String) {
   team(id: $teamId) {
-    projects(first: $first, after: $after) {
+    projects(first: $first, after: $after, orderBy: updatedAt) {
       nodes {
         id
         name
