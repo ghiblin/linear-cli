@@ -12,7 +12,7 @@ use crate::{
     },
     infrastructure::graphql::{
         mutations::project_mutations::{
-            ProjectCreateInputVars, ProjectUpdateInputVars, archive_project, create_project,
+            ProjectCreateInput, ProjectUpdateInput, archive_project, create_project,
             update_project,
         },
         queries::project_queries::{
@@ -66,7 +66,7 @@ fn parse_datetime(s: &str) -> DateTime<Utc> {
 
 fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
     Project::new(
-        node.id,
+        node.id.into_inner(),
         node.name,
         if node.description.is_empty() {
             None
@@ -75,8 +75,8 @@ fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
         },
         project_state_from_str(&node.state),
         node.progress,
-        node.lead.and_then(|l| UserId::new(l.id).ok()),
-        node.teams.nodes.into_iter().filter_map(|t| TeamId::new(t.id).ok()).collect(),
+        node.lead.and_then(|l| UserId::new(l.id.into_inner()).ok()),
+        node.teams.nodes.into_iter().filter_map(|t| TeamId::new(t.id.into_inner()).ok()).collect(),
         node.start_date.as_deref().and_then(parse_date),
         node.target_date.as_deref().and_then(parse_date),
         parse_datetime(&node.updated_at),
@@ -119,7 +119,7 @@ impl ProjectRepository for LinearProjectRepository {
     #[instrument(skip(self))]
     async fn create(&self, input: CreateProjectInput) -> Result<Project, DomainError> {
         let status_id = None;
-        let vars = ProjectCreateInputVars {
+        let vars = ProjectCreateInput {
             name: input.name,
             team_ids: input.team_ids.iter().map(|t| t.as_str().to_string()).collect(),
             description: input.description,
@@ -146,7 +146,7 @@ impl ProjectRepository for LinearProjectRepository {
         } else {
             None
         };
-        let vars = ProjectUpdateInputVars {
+        let vars = ProjectUpdateInput {
             name: input.name,
             description: input.description,
             lead_id: input.lead_id.map(|l| l.as_str().to_string()),

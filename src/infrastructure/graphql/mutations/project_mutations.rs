@@ -1,80 +1,113 @@
-use serde::{Deserialize, Serialize};
+use crate::infrastructure::graphql::schema::schema;
+use cynic::MutationBuilder;
 
 use crate::infrastructure::graphql::queries::project_queries::{
     GraphqlResponse, ProjectNode, execute_with_retry, map_errors,
 };
 
-// ---- Create ----
+// ---- Shared response types ----
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectCreateInputVars {
-    pub name: String,
-    pub team_ids: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub lead_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub start_date: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_date: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status_id: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "ProjectPayload")]
 pub struct ProjectPayload {
     pub project: Option<ProjectNode>,
     pub success: bool,
+    #[allow(dead_code)]
     pub last_sync_id: f64,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectCreateData {
+// ---- Create ----
+
+#[derive(cynic::InputObject, Debug)]
+#[cynic(graphql_type = "ProjectCreateInput")]
+pub struct ProjectCreateInput {
+    pub name: String,
+    pub team_ids: Vec<String>,
+    pub description: Option<String>,
+    pub lead_id: Option<String>,
+    pub start_date: Option<String>,
+    pub target_date: Option<String>,
+    pub status_id: Option<String>,
+}
+
+#[derive(cynic::QueryVariables, Debug)]
+pub struct ProjectCreateVariables {
+    pub input: ProjectCreateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Mutation", variables = "ProjectCreateVariables")]
+pub struct ProjectCreateMutation {
+    #[arguments(input: $input)]
     pub project_create: ProjectPayload,
 }
 
-const PROJECT_CREATE_MUTATION: &str = r#"
-mutation ProjectCreate($input: ProjectCreateInput!) {
-  projectCreate(input: $input) {
-    success
-    lastSyncId
-    project {
-      id
-      name
-      description
-      slugId
-      progress
-      state
-      lead { id }
-      teams(first: 50) { nodes { id } }
-      startDate
-      targetDate
-      updatedAt
-    }
-  }
+// ---- Update ----
+
+#[derive(cynic::InputObject, Debug)]
+#[cynic(graphql_type = "ProjectUpdateInput")]
+pub struct ProjectUpdateInput {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub lead_id: Option<String>,
+    pub start_date: Option<String>,
+    pub target_date: Option<String>,
+    pub status_id: Option<String>,
 }
-"#;
+
+#[derive(cynic::QueryVariables, Debug)]
+pub struct ProjectUpdateVariables {
+    pub id: String,
+    pub input: ProjectUpdateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Mutation", variables = "ProjectUpdateVariables")]
+pub struct ProjectUpdateMutation {
+    #[arguments(id: $id, input: $input)]
+    pub project_update: ProjectPayload,
+}
+
+// ---- Archive ----
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Project")]
+pub struct ArchivedProjectEntity {
+    pub id: cynic::Id,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "ProjectArchivePayload")]
+pub struct ProjectArchivePayload {
+    pub success: bool,
+    pub entity: Option<ArchivedProjectEntity>,
+}
+
+#[derive(cynic::QueryVariables, Debug)]
+pub struct ProjectArchiveVariables {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Mutation", variables = "ProjectArchiveVariables")]
+pub struct ProjectArchiveMutation {
+    #[arguments(id: $id)]
+    pub project_archive: ProjectArchivePayload,
+}
 
 pub async fn create_project(
     client: &reqwest::Client,
     api_key: &str,
-    input: ProjectCreateInputVars,
+    input: ProjectCreateInput,
 ) -> Result<ProjectNode, crate::domain::errors::DomainError> {
-    #[derive(Serialize)]
-    struct Vars {
-        input: ProjectCreateInputVars,
-    }
-    let resp: GraphqlResponse<ProjectCreateData> =
-        execute_with_retry(client, api_key, PROJECT_CREATE_MUTATION, Vars { input }).await?;
+    let op = ProjectCreateMutation::build(ProjectCreateVariables { input });
+    let resp: GraphqlResponse<ProjectCreateMutation> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
-    let payload = resp.data
+    let payload = resp
+        .data
         .ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
         })?
@@ -91,70 +124,21 @@ pub async fn create_project(
     })
 }
 
-// ---- Update ----
-
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectUpdateInputVars {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub lead_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub start_date: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_date: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status_id: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectUpdateData {
-    pub project_update: ProjectPayload,
-}
-
-const PROJECT_UPDATE_MUTATION: &str = r#"
-mutation ProjectUpdate($id: String!, $input: ProjectUpdateInput!) {
-  projectUpdate(id: $id, input: $input) {
-    success
-    lastSyncId
-    project {
-      id
-      name
-      description
-      slugId
-      progress
-      state
-      lead { id }
-      teams(first: 50) { nodes { id } }
-      startDate
-      targetDate
-      updatedAt
-    }
-  }
-}
-"#;
-
 pub async fn update_project(
     client: &reqwest::Client,
     api_key: &str,
     id: &str,
-    input: ProjectUpdateInputVars,
+    input: ProjectUpdateInput,
 ) -> Result<ProjectNode, crate::domain::errors::DomainError> {
-    #[derive(Serialize)]
-    struct Vars<'a> {
-        id: &'a str,
-        input: ProjectUpdateInputVars,
-    }
-    let resp: GraphqlResponse<ProjectUpdateData> =
-        execute_with_retry(client, api_key, PROJECT_UPDATE_MUTATION, Vars { id, input }).await?;
+    let op =
+        ProjectUpdateMutation::build(ProjectUpdateVariables { id: id.to_string(), input });
+    let resp: GraphqlResponse<ProjectUpdateMutation> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
-    let payload = resp.data
+    let payload = resp
+        .data
         .ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
         })?
@@ -171,46 +155,14 @@ pub async fn update_project(
     })
 }
 
-// ---- Archive ----
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectArchivePayload {
-    pub success: bool,
-    pub entity: Option<ArchivedProjectEntity>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ArchivedProjectEntity {
-    pub id: String,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectArchiveData {
-    pub project_archive: ProjectArchivePayload,
-}
-
-const PROJECT_ARCHIVE_MUTATION: &str = r#"
-mutation ProjectArchive($id: String!) {
-  projectArchive(id: $id) {
-    success
-    entity { id }
-  }
-}
-"#;
-
 pub async fn archive_project(
     client: &reqwest::Client,
     api_key: &str,
     id: &str,
 ) -> Result<String, crate::domain::errors::DomainError> {
-    #[derive(Serialize)]
-    struct Vars<'a> {
-        id: &'a str,
-    }
-    let resp: GraphqlResponse<ProjectArchiveData> =
-        execute_with_retry(client, api_key, PROJECT_ARCHIVE_MUTATION, Vars { id }).await?;
+    let op = ProjectArchiveMutation::build(ProjectArchiveVariables { id: id.to_string() });
+    let resp: GraphqlResponse<ProjectArchiveMutation> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
@@ -225,6 +177,6 @@ pub async fn archive_project(
     Ok(data
         .project_archive
         .entity
-        .map(|e| e.id)
+        .map(|e| e.id.into_inner())
         .unwrap_or_else(|| id.to_string()))
 }
