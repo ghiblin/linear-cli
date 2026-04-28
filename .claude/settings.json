@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '/^type Team /,/^\\\\}/' /Users/alessandrovitali/Projects/personal/linear-cli/schema.graphql)",
+      "Bash(awk '/^type Query /,0' /Users/alessandrovitali/Projects/personal/linear-cli/schema.graphql)",
+      "Bash(awk '/  projects\\\\\\(/,/  \\\\\\): ProjectConnection/')"
+    ]
+  }
+}
