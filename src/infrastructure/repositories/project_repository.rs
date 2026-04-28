@@ -44,6 +44,48 @@ impl LinearProjectRepository {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::graphql::queries::project_queries::{
+        ProjectNode, TeamConnection,
+    };
+
+    fn make_node(progress: f64) -> ProjectNode {
+        ProjectNode {
+            id: cynic::Id::new("test-id".to_string()),
+            name: "Test Project".to_string(),
+            description: "desc".to_string(),
+            slug_id: "TEST-1".to_string(),
+            progress,
+            state: "started".to_string(),
+            lead: None,
+            teams: TeamConnection { nodes: vec![] },
+            start_date: None,
+            target_date: None,
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn node_to_project_scales_progress_from_api_ratio_to_percentage() {
+        let project = node_to_project(make_node(0.75)).unwrap();
+        assert_eq!(project.progress, 75.0);
+    }
+
+    #[test]
+    fn node_to_project_handles_zero_progress() {
+        let project = node_to_project(make_node(0.0)).unwrap();
+        assert_eq!(project.progress, 0.0);
+    }
+
+    #[test]
+    fn node_to_project_handles_full_progress() {
+        let project = node_to_project(make_node(1.0)).unwrap();
+        assert_eq!(project.progress, 100.0);
+    }
+}
+
 fn project_state_from_str(s: &str) -> ProjectState {
     match s.to_lowercase().as_str() {
         "started" => ProjectState::Started,
@@ -74,7 +116,7 @@ fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
             Some(node.description)
         },
         project_state_from_str(&node.state),
-        node.progress,
+        node.progress * 100.0,
         node.lead.and_then(|l| UserId::new(l.id.into_inner()).ok()),
         node.teams.nodes.into_iter().filter_map(|t| TeamId::new(t.id.into_inner()).ok()).collect(),
         node.start_date.as_deref().and_then(parse_date),

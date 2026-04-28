@@ -103,4 +103,19 @@ mod tests {
             .await;
         assert!(matches!(result, Err(DomainError::NotFound(_))));
     }
+
+    #[tokio::test]
+    async fn already_archived_signal_returns_already_archived_outcome() {
+        // The repo must signal already-archived via NotFound("...archived...").
+        // The mutation layer is responsible for mapping success==false to this error.
+        let mut mock = MockTestRepo::new();
+        mock.expect_archive()
+            .times(1)
+            .returning(|_| Err(DomainError::NotFound("project is already archived".to_string())));
+        let uc = ArchiveProject::new(Arc::new(mock));
+        let result = uc
+            .execute(ProjectId::parse("uuid-1").unwrap(), false)
+            .await;
+        assert!(matches!(result, Ok(ArchiveOutcome::AlreadyArchived)));
+    }
 }

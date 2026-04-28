@@ -170,8 +170,8 @@ pub async fn archive_project(
         crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
     })?;
     if !data.project_archive.success {
-        return Err(crate::domain::errors::DomainError::InvalidInput(
-            "archive operation reported failure".to_string(),
+        return Err(crate::domain::errors::DomainError::NotFound(
+            "project is already archived".to_string(),
         ));
     }
     Ok(data
