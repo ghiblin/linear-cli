@@ -8,7 +8,7 @@ use crate::{
         entities::project::{CreateProjectInput, Project, UpdateProjectInput},
         errors::DomainError,
         repositories::project_repository::{ListProjectsResult, PageInfo, ProjectRepository},
-        value_objects::{ProjectId, ProjectState, team_id::TeamId},
+        value_objects::{ProjectId, ProjectState, UserId, team_id::TeamId},
     },
     infrastructure::graphql::{
         mutations::project_mutations::{
@@ -75,8 +75,8 @@ fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
         },
         project_state_from_str(&node.state),
         node.progress,
-        node.lead.map(|l| l.id),
-        node.teams.nodes.into_iter().map(|t| t.id).collect(),
+        node.lead.and_then(|l| UserId::new(l.id).ok()),
+        node.teams.nodes.into_iter().filter_map(|t| TeamId::new(t.id).ok()).collect(),
         node.start_date.as_deref().and_then(parse_date),
         node.target_date.as_deref().and_then(parse_date),
         parse_datetime(&node.updated_at),

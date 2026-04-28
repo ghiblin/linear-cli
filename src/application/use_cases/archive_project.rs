@@ -8,6 +8,11 @@ use crate::domain::{
     value_objects::ProjectId,
 };
 
+pub enum ArchiveOutcome {
+    Archived,
+    AlreadyArchived,
+}
+
 pub struct ArchiveProject {
     repo: Arc<dyn ProjectRepository>,
 }
@@ -18,13 +23,15 @@ impl ArchiveProject {
     }
 
     #[instrument(skip(self))]
-    pub async fn execute(&self, id: ProjectId, dry_run: bool) -> Result<(), DomainError> {
+    pub async fn execute(&self, id: ProjectId, dry_run: bool) -> Result<ArchiveOutcome, DomainError> {
         if dry_run {
-            return Ok(());
+            return Ok(ArchiveOutcome::Archived);
         }
         match self.repo.archive(id).await {
-            Ok(()) => Ok(()),
-            Err(DomainError::NotFound(msg)) if msg.to_lowercase().contains("archived") => Ok(()),
+            Ok(()) => Ok(ArchiveOutcome::Archived),
+            Err(DomainError::NotFound(msg)) if msg.to_lowercase().contains("archived") => {
+                Ok(ArchiveOutcome::AlreadyArchived)
+            }
             Err(e) => Err(e),
         }
     }

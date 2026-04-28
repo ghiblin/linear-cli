@@ -115,7 +115,7 @@ mod tests {
             ProjectState::Started,
             0.0,
             None,
-            vec!["team-1".to_string()],
+            vec![crate::domain::value_objects::team_id::TeamId::new("team-1".to_string()).unwrap()],
             None,
             None,
             Utc::now(),

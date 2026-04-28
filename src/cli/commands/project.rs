@@ -8,7 +8,7 @@ use crate::{
     application::{
         errors::ApplicationError,
         use_cases::{
-            archive_project::ArchiveProject,
+            archive_project::{ArchiveOutcome, ArchiveProject},
             create_project::{CreateProject, CreateProjectArgs},
             get_project::GetProject,
             list_projects::ListProjects,
@@ -59,8 +59,6 @@ pub struct ListArgs {
     pub all: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode (implies verbose)")]
-    pub debug: bool,
 }
 
 #[derive(Args)]
@@ -69,8 +67,6 @@ pub struct GetArgs {
     pub id: String,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
-    pub debug: bool,
 }
 
 #[derive(Args)]
@@ -91,8 +87,6 @@ pub struct CreateArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
-    pub debug: bool,
 }
 
 #[derive(Args)]
@@ -115,8 +109,6 @@ pub struct UpdateArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
-    pub debug: bool,
 }
 
 #[derive(Args)]
@@ -127,8 +119,6 @@ pub struct ArchiveArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
-    pub debug: bool,
 }
 
 // ---- Output DTOs ----
@@ -167,8 +157,8 @@ impl From<&crate::domain::entities::project::Project> for ProjectDto {
             description: p.description.clone(),
             state: p.state.to_string(),
             progress: p.progress,
-            lead_id: p.lead_id.clone(),
-            team_ids: p.team_ids.clone(),
+            lead_id: p.lead_id.as_ref().map(|l| l.to_string()),
+            team_ids: p.team_ids.iter().map(|t| t.to_string()).collect(),
             start_date: p.start_date.map(|d| d.to_string()),
             target_date: p.target_date.map(|d| d.to_string()),
             updated_at: p.updated_at.to_rfc3339(),
@@ -187,6 +177,7 @@ struct MutationResultDto {
 struct ArchiveResultDto {
     success: bool,
     id: String,
+    already_archived: bool,
 }
 
 #[derive(Serialize)]
@@ -297,7 +288,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                         if let Some(lead) = &project.lead_id {
                             println!("Lead:        {}", lead);
                         }
-                        println!("Teams:       {}", project.team_ids.join(", "));
+                        println!("Teams:       {}", project.team_ids.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(", "));
                         if let Some(d) = project.start_date {
                             println!("Start date:  {}", d);
                         }
@@ -485,12 +476,20 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
             let uc = ArchiveProject::new(repo);
             match uc.execute(id, false).await {
-                Ok(()) => {
+                Ok(ArchiveOutcome::Archived) => {
                     if should_use_json(use_json) {
-                        let dto = ArchiveResultDto { success: true, id: id_str };
+                        let dto = ArchiveResultDto { success: true, id: id_str, already_archived: false };
                         println!("{}", format_json(&dto));
                     } else {
                         println!("Archived project {}", args.id);
+                    }
+                }
+                Ok(ArchiveOutcome::AlreadyArchived) => {
+                    if should_use_json(use_json) {
+                        let dto = ArchiveResultDto { success: true, id: id_str, already_archived: true };
+                        println!("{}", format_json(&dto));
+                    } else {
+                        println!("Project {} is already archived", args.id);
                     }
                 }
                 Err(DomainError::NotFound(ref id)) => {

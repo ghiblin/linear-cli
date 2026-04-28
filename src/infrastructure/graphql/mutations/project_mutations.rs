@@ -74,17 +74,21 @@ pub async fn create_project(
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
-    resp.data
+    let payload = resp.data
         .ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
         })?
-        .project_create
-        .project
-        .ok_or_else(|| {
-            crate::domain::errors::DomainError::InvalidInput(
-                "project not returned in create response".to_string(),
-            )
-        })
+        .project_create;
+    if !payload.success {
+        return Err(crate::domain::errors::DomainError::InvalidInput(
+            "create operation reported failure".to_string(),
+        ));
+    }
+    payload.project.ok_or_else(|| {
+        crate::domain::errors::DomainError::InvalidInput(
+            "project not returned in create response".to_string(),
+        )
+    })
 }
 
 // ---- Update ----
@@ -150,17 +154,21 @@ pub async fn update_project(
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
-    resp.data
+    let payload = resp.data
         .ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
         })?
-        .project_update
-        .project
-        .ok_or_else(|| {
-            crate::domain::errors::DomainError::InvalidInput(
-                "project not returned in update response".to_string(),
-            )
-        })
+        .project_update;
+    if !payload.success {
+        return Err(crate::domain::errors::DomainError::InvalidInput(
+            "update operation reported failure".to_string(),
+        ));
+    }
+    payload.project.ok_or_else(|| {
+        crate::domain::errors::DomainError::InvalidInput(
+            "project not returned in update response".to_string(),
+        )
+    })
 }
 
 // ---- Archive ----
