@@ -8,7 +8,7 @@ use crate::{
     application::{
         errors::ApplicationError,
         use_cases::{
-            archive_project::ArchiveProject,
+            archive_project::{ArchiveOutcome, ArchiveProject},
             create_project::{CreateProject, CreateProjectArgs},
             get_project::GetProject,
             list_projects::ListProjects,
@@ -59,7 +59,9 @@ pub struct ListArgs {
     pub all: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode (implies verbose)")]
+    #[arg(long, help = "Print step-by-step progress to stderr")]
+    pub verbose: bool,
+    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
     pub debug: bool,
 }
 
@@ -69,7 +71,9 @@ pub struct GetArgs {
     pub id: String,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
+    #[arg(long, help = "Print step-by-step progress to stderr")]
+    pub verbose: bool,
+    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
     pub debug: bool,
 }
 
@@ -91,7 +95,9 @@ pub struct CreateArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
+    #[arg(long, help = "Print step-by-step progress to stderr")]
+    pub verbose: bool,
+    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
     pub debug: bool,
 }
 
@@ -115,7 +121,9 @@ pub struct UpdateArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
+    #[arg(long, help = "Print step-by-step progress to stderr")]
+    pub verbose: bool,
+    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
     pub debug: bool,
 }
 
@@ -127,7 +135,9 @@ pub struct ArchiveArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Debug mode")]
+    #[arg(long, help = "Print step-by-step progress to stderr")]
+    pub verbose: bool,
+    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
     pub debug: bool,
 }
 
@@ -167,8 +177,8 @@ impl From<&crate::domain::entities::project::Project> for ProjectDto {
             description: p.description.clone(),
             state: p.state.to_string(),
             progress: p.progress,
-            lead_id: p.lead_id.clone(),
-            team_ids: p.team_ids.clone(),
+            lead_id: p.lead_id.as_ref().map(|l| l.to_string()),
+            team_ids: p.team_ids.iter().map(|t| t.to_string()).collect(),
             start_date: p.start_date.map(|d| d.to_string()),
             target_date: p.target_date.map(|d| d.to_string()),
             updated_at: p.updated_at.to_rfc3339(),
@@ -187,6 +197,7 @@ struct MutationResultDto {
 struct ArchiveResultDto {
     success: bool,
     id: String,
+    already_archived: bool,
 }
 
 #[derive(Serialize)]
@@ -213,6 +224,12 @@ struct DryRunArchiveDto {
 
 // ---- Main dispatch ----
 
+fn verbose_print(verbose: bool, msg: &str) {
+    if verbose {
+        eprintln!("{}", msg);
+    }
+}
+
 fn parse_date(s: &str, flag: &str) -> Result<NaiveDate, anyhow::Error> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|_| anyhow::anyhow!("invalid date for {}: '{}'; expected YYYY-MM-DD", flag, s))
@@ -236,6 +253,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
     match &cmd.subcommand {
         ProjectSubcommand::List(args) => {
+            let verbose = args.verbose || args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let uc = ListProjects::new(repo);
             let team_id = args
@@ -248,7 +266,9 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                     std::process::exit(1);
                 })
                 .unwrap();
+            verbose_print(verbose, "Fetching projects…");
             let result = uc.execute(team_id, args.limit, args.cursor.clone(), args.all).await?;
+            verbose_print(verbose, &format!("Found {} project(s).", result.items.len()));
 
             if should_use_json(use_json) {
                 let dto = ProjectListDto {
@@ -274,12 +294,14 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Get(args) => {
+            let verbose = args.verbose || args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let id = ProjectId::parse(&args.id).map_err(|e| {
                 eprintln!("error: {}", e);
                 std::process::exit(1);
             }).unwrap();
 
+            verbose_print(verbose, &format!("Fetching project {}…", args.id));
             let uc = GetProject::new(repo);
             match uc.execute(id).await {
                 Ok(project) => {
@@ -297,7 +319,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                         if let Some(lead) = &project.lead_id {
                             println!("Lead:        {}", lead);
                         }
-                        println!("Teams:       {}", project.team_ids.join(", "));
+                        println!("Teams:       {}", project.team_ids.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(", "));
                         if let Some(d) = project.start_date {
                             println!("Start date:  {}", d);
                         }
@@ -316,6 +338,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Create(args) => {
+            let verbose = args.verbose || args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let start_date = args
                 .start_date
@@ -366,6 +389,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 return Ok(());
             }
 
+            verbose_print(verbose, &format!("Creating project \"{}\"…", args.name));
             let uc = CreateProject::new(repo);
             if let Some(project) = uc.execute(create_args, false).await? {
                 if should_use_json(use_json) {
@@ -382,6 +406,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Update(args) => {
+            let verbose = args.verbose || args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
 
             let state = args
@@ -446,6 +471,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 return Ok(());
             }
 
+            verbose_print(verbose, &format!("Updating project {}…", args.id));
             let uc = UpdateProject::new(repo);
             if let Some(project) = uc.execute(id, update_args, false).await? {
                 if should_use_json(use_json) {
@@ -462,6 +488,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Archive(args) => {
+            let verbose = args.verbose || args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let id_str = args.id.clone();
             let id = ProjectId::parse(&id_str).map_err(|e| {
@@ -483,14 +510,23 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 return Ok(());
             }
 
+            verbose_print(verbose, &format!("Archiving project {}…", id_str));
             let uc = ArchiveProject::new(repo);
             match uc.execute(id, false).await {
-                Ok(()) => {
+                Ok(ArchiveOutcome::Archived) => {
                     if should_use_json(use_json) {
-                        let dto = ArchiveResultDto { success: true, id: id_str };
+                        let dto = ArchiveResultDto { success: true, id: id_str, already_archived: false };
                         println!("{}", format_json(&dto));
                     } else {
                         println!("Archived project {}", args.id);
+                    }
+                }
+                Ok(ArchiveOutcome::AlreadyArchived) => {
+                    if should_use_json(use_json) {
+                        let dto = ArchiveResultDto { success: true, id: id_str, already_archived: true };
+                        println!("{}", format_json(&dto));
+                    } else {
+                        println!("Project {} is already archived", args.id);
                     }
                 }
                 Err(DomainError::NotFound(ref id)) => {
@@ -503,4 +539,75 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_args_has_verbose_and_debug_flags() {
+        let args = ListArgs {
+            team: None,
+            limit: 50,
+            cursor: None,
+            all: false,
+            output: None,
+            verbose: false,
+            debug: false,
+        };
+        assert!(!args.verbose);
+        assert!(!args.debug);
+    }
+
+    #[test]
+    fn get_args_has_verbose_and_debug_flags() {
+        let args = GetArgs { id: "id".into(), output: None, verbose: false, debug: false };
+        assert!(!args.verbose);
+        assert!(!args.debug);
+    }
+
+    #[test]
+    fn create_args_has_verbose_and_debug_flags() {
+        let args = CreateArgs {
+            name: "n".into(),
+            teams: vec![],
+            description: None,
+            lead: None,
+            start_date: None,
+            target_date: None,
+            dry_run: false,
+            output: None,
+            verbose: false,
+            debug: false,
+        };
+        assert!(!args.verbose);
+        assert!(!args.debug);
+    }
+
+    #[test]
+    fn update_args_has_verbose_and_debug_flags() {
+        let args = UpdateArgs {
+            id: "id".into(),
+            name: None,
+            description: None,
+            state: None,
+            lead: None,
+            start_date: None,
+            target_date: None,
+            dry_run: false,
+            output: None,
+            verbose: false,
+            debug: false,
+        };
+        assert!(!args.verbose);
+        assert!(!args.debug);
+    }
+
+    #[test]
+    fn archive_args_has_verbose_and_debug_flags() {
+        let args = ArchiveArgs { id: "id".into(), dry_run: false, output: None, verbose: false, debug: false };
+        assert!(!args.verbose);
+        assert!(!args.debug);
+    }
 }

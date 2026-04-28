@@ -42,7 +42,10 @@ impl ListProjects {
                     page_info: page.page_info,
                 });
             }
-            cursor = page.page_info.end_cursor;
+            cursor = match page.page_info.end_cursor {
+                Some(c) => Some(c),
+                None => return Ok(ListProjectsResult { items, page_info: page.page_info }),
+            };
         }
     }
 }

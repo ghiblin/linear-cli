@@ -8,11 +8,11 @@ use crate::{
         entities::project::{CreateProjectInput, Project, UpdateProjectInput},
         errors::DomainError,
         repositories::project_repository::{ListProjectsResult, PageInfo, ProjectRepository},
-        value_objects::{ProjectId, ProjectState, team_id::TeamId},
+        value_objects::{ProjectId, ProjectState, UserId, team_id::TeamId},
     },
     infrastructure::graphql::{
         mutations::project_mutations::{
-            ProjectCreateInputVars, ProjectUpdateInputVars, archive_project, create_project,
+            ProjectCreateInput, ProjectUpdateInput, archive_project, create_project,
             update_project,
         },
         queries::project_queries::{
@@ -44,6 +44,48 @@ impl LinearProjectRepository {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::graphql::queries::project_queries::{
+        ProjectNode, TeamConnection,
+    };
+
+    fn make_node(progress: f64) -> ProjectNode {
+        ProjectNode {
+            id: cynic::Id::new("test-id".to_string()),
+            name: "Test Project".to_string(),
+            description: "desc".to_string(),
+            slug_id: "TEST-1".to_string(),
+            progress,
+            state: "started".to_string(),
+            lead: None,
+            teams: TeamConnection { nodes: vec![] },
+            start_date: None,
+            target_date: None,
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn node_to_project_scales_progress_from_api_ratio_to_percentage() {
+        let project = node_to_project(make_node(0.75)).unwrap();
+        assert_eq!(project.progress, 75.0);
+    }
+
+    #[test]
+    fn node_to_project_handles_zero_progress() {
+        let project = node_to_project(make_node(0.0)).unwrap();
+        assert_eq!(project.progress, 0.0);
+    }
+
+    #[test]
+    fn node_to_project_handles_full_progress() {
+        let project = node_to_project(make_node(1.0)).unwrap();
+        assert_eq!(project.progress, 100.0);
+    }
+}
+
 fn project_state_from_str(s: &str) -> ProjectState {
     match s.to_lowercase().as_str() {
         "started" => ProjectState::Started,
@@ -66,7 +108,7 @@ fn parse_datetime(s: &str) -> DateTime<Utc> {
 
 fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
     Project::new(
-        node.id,
+        node.id.into_inner(),
         node.name,
         if node.description.is_empty() {
             None
@@ -74,9 +116,9 @@ fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
             Some(node.description)
         },
         project_state_from_str(&node.state),
-        node.progress,
-        node.lead.map(|l| l.id),
-        node.teams.nodes.into_iter().map(|t| t.id).collect(),
+        node.progress * 100.0,
+        node.lead.and_then(|l| UserId::new(l.id.into_inner()).ok()),
+        node.teams.nodes.into_iter().filter_map(|t| TeamId::new(t.id.into_inner()).ok()).collect(),
         node.start_date.as_deref().and_then(parse_date),
         node.target_date.as_deref().and_then(parse_date),
         parse_datetime(&node.updated_at),
@@ -119,7 +161,7 @@ impl ProjectRepository for LinearProjectRepository {
     #[instrument(skip(self))]
     async fn create(&self, input: CreateProjectInput) -> Result<Project, DomainError> {
         let status_id = None;
-        let vars = ProjectCreateInputVars {
+        let vars = ProjectCreateInput {
             name: input.name,
             team_ids: input.team_ids.iter().map(|t| t.as_str().to_string()).collect(),
             description: input.description,
@@ -146,7 +188,7 @@ impl ProjectRepository for LinearProjectRepository {
         } else {
             None
         };
-        let vars = ProjectUpdateInputVars {
+        let vars = ProjectUpdateInput {
             name: input.name,
             description: input.description,
             lead_id: input.lead_id.map(|l| l.as_str().to_string()),

@@ -13,8 +13,8 @@ pub struct Project {
     pub description: Option<String>,
     pub state: ProjectState,
     pub progress: f64,
-    pub lead_id: Option<String>,
-    pub team_ids: Vec<String>,
+    pub lead_id: Option<UserId>,
+    pub team_ids: Vec<TeamId>,
     pub start_date: Option<NaiveDate>,
     pub target_date: Option<NaiveDate>,
     pub updated_at: DateTime<Utc>,
@@ -29,8 +29,8 @@ impl Project {
         description: Option<String>,
         state: ProjectState,
         progress: f64,
-        lead_id: Option<String>,
-        team_ids: Vec<String>,
+        lead_id: Option<UserId>,
+        team_ids: Vec<TeamId>,
         start_date: Option<NaiveDate>,
         target_date: Option<NaiveDate>,
         updated_at: DateTime<Utc>,
@@ -39,11 +39,6 @@ impl Project {
         if name.is_empty() {
             return Err(DomainError::InvalidInput(
                 "project name cannot be empty".to_string(),
-            ));
-        }
-        if team_ids.is_empty() {
-            return Err(DomainError::InvalidInput(
-                "project must belong to at least one team".to_string(),
             ));
         }
         if !(0.0..=100.0).contains(&progress) {
@@ -111,7 +106,7 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    fn make_project(name: &str, team_ids: Vec<String>, progress: f64) -> Result<Project, DomainError> {
+    fn make_project(name: &str, team_ids: Vec<TeamId>, progress: f64) -> Result<Project, DomainError> {
         Project::new(
             "some-uuid".to_string(),
             name.to_string(),
@@ -129,25 +124,19 @@ mod tests {
 
     #[test]
     fn rejects_empty_name() {
-        let err = make_project("", vec!["team-1".to_string()], 0.0).unwrap_err();
+        let err = make_project("", vec![TeamId::new("team-1".to_string()).unwrap()], 0.0).unwrap_err();
         assert!(err.to_string().contains("name"));
     }
 
     #[test]
-    fn rejects_empty_teams() {
-        let err = make_project("Valid Name", vec![], 0.0).unwrap_err();
-        assert!(err.to_string().contains("team"));
-    }
-
-    #[test]
     fn rejects_invalid_progress() {
-        let err = make_project("Valid", vec!["team-1".to_string()], 101.0).unwrap_err();
+        let err = make_project("Valid", vec![TeamId::new("team-1".to_string()).unwrap()], 101.0).unwrap_err();
         assert!(err.to_string().contains("progress"));
     }
 
     #[test]
     fn accepts_valid_project() {
-        let p = make_project("My Project", vec!["team-1".to_string()], 50.0).unwrap();
+        let p = make_project("My Project", vec![TeamId::new("team-1".to_string()).unwrap()], 50.0).unwrap();
         assert_eq!(p.name, "My Project");
         assert_eq!(p.progress, 50.0);
     }

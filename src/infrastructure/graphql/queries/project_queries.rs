@@ -1,3 +1,5 @@
+use crate::infrastructure::graphql::schema::schema;
+use cynic::QueryBuilder;
 use serde::{Deserialize, Serialize};
 
 const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
@@ -36,118 +38,100 @@ impl GraphqlError {
     }
 }
 
-// ---- List Projects ----
+// ---- Shared node types ----
 
-#[derive(Serialize)]
-pub struct ProjectsVariables {
-    pub first: i32,
-    pub after: Option<String>,
-    pub team_id: Option<String>,
+#[derive(cynic::QueryFragment, Debug, Clone)]
+#[cynic(graphql_type = "User")]
+pub struct LeadNode {
+    pub id: cynic::Id,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct ProjectsData {
-    pub projects: ProjectConnection,
+#[derive(cynic::QueryFragment, Debug, Clone)]
+#[cynic(graphql_type = "Team")]
+pub struct TeamNode {
+    pub id: cynic::Id,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct TeamProjectsData {
-    pub team: TeamWithProjects,
+#[derive(cynic::QueryFragment, Debug, Clone)]
+#[cynic(graphql_type = "TeamConnection")]
+pub struct TeamConnection {
+    pub nodes: Vec<TeamNode>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct TeamWithProjects {
-    pub projects: ProjectConnection,
+#[derive(cynic::QueryFragment, Debug, Clone)]
+#[cynic(graphql_type = "PageInfo")]
+pub struct PageInfoNode {
+    pub has_next_page: bool,
+    pub end_cursor: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectConnection {
-    pub nodes: Vec<ProjectNode>,
-    pub page_info: PageInfoNode,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(cynic::QueryFragment, Debug, Clone)]
+#[cynic(graphql_type = "Project")]
+#[allow(deprecated)]
 pub struct ProjectNode {
-    pub id: String,
+    pub id: cynic::Id,
     pub name: String,
     pub description: String,
     pub slug_id: String,
     pub progress: f64,
     pub state: String,
     pub lead: Option<LeadNode>,
+    #[arguments(first: 50)]
     pub teams: TeamConnection,
     pub start_date: Option<String>,
     pub target_date: Option<String>,
     pub updated_at: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct LeadNode {
-    pub id: String,
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "ProjectConnection")]
+pub struct ProjectConnection {
+    pub nodes: Vec<ProjectNode>,
+    pub page_info: PageInfoNode,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct TeamConnection {
-    pub nodes: Vec<TeamNode>,
+// ---- List Projects ----
+
+#[derive(cynic::Enum, Debug, Clone, Copy)]
+#[cynic(graphql_type = "PaginationOrderBy", rename_all = "camelCase")]
+pub enum PaginationOrderBy {
+    UpdatedAt,
+    CreatedAt,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct TeamNode {
-    pub id: String,
+#[derive(cynic::QueryVariables, Debug)]
+pub struct ProjectsVariables {
+    pub first: i32,
+    pub after: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct PageInfoNode {
-    pub has_next_page: bool,
-    pub end_cursor: Option<String>,
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Query", variables = "ProjectsVariables")]
+pub struct ProjectsQuery {
+    #[arguments(first: $first, after: $after, orderBy: updatedAt)]
+    pub projects: ProjectConnection,
 }
 
-const PROJECTS_QUERY: &str = r#"
-query Projects($first: Int!, $after: String) {
-  projects(first: $first, after: $after, orderBy: updatedAt) {
-    nodes {
-      id
-      name
-      description
-      slugId
-      progress
-      state
-      lead { id }
-      teams(first: 50) { nodes { id } }
-      startDate
-      targetDate
-      updatedAt
-    }
-    pageInfo { hasNextPage endCursor }
-  }
+#[derive(cynic::QueryVariables, Debug)]
+pub struct TeamProjectsVariables {
+    pub team_id: String,
+    pub first: i32,
+    pub after: Option<String>,
 }
-"#;
 
-const TEAM_PROJECTS_QUERY: &str = r#"
-query TeamProjects($teamId: String!, $first: Int!, $after: String) {
-  team(id: $teamId) {
-    projects(first: $first, after: $after, orderBy: updatedAt) {
-      nodes {
-        id
-        name
-        description
-        slugId
-        progress
-        state
-        lead { id }
-        teams(first: 50) { nodes { id } }
-        startDate
-        targetDate
-        updatedAt
-      }
-      pageInfo { hasNextPage endCursor }
-    }
-  }
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Query", variables = "TeamProjectsVariables")]
+pub struct TeamProjectsQuery {
+    #[arguments(id: $team_id)]
+    pub team: TeamWithProjects,
 }
-"#;
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Team", variables = "TeamProjectsVariables")]
+pub struct TeamWithProjects {
+    #[arguments(first: $first, after: $after, orderBy: updatedAt)]
+    pub projects: ProjectConnection,
+}
 
 pub async fn fetch_projects(
     client: &reqwest::Client,
@@ -157,48 +141,30 @@ pub async fn fetch_projects(
     team_id: Option<&str>,
 ) -> Result<(Vec<ProjectNode>, PageInfoNode), crate::domain::errors::DomainError> {
     if let Some(tid) = team_id {
-        #[derive(Serialize)]
-        struct Vars<'a> {
-            #[serde(rename = "teamId")]
-            team_id: &'a str,
-            first: i32,
-            after: Option<String>,
-        }
-        let resp = execute_with_retry(
-            client,
-            api_key,
-            TEAM_PROJECTS_QUERY,
-            Vars { team_id: tid, first, after },
-        )
-        .await?;
-        let body: GraphqlResponse<TeamProjectsData> = resp;
-        if let Some(errors) = body.errors {
+        let op = TeamProjectsQuery::build(TeamProjectsVariables {
+            team_id: tid.to_string(),
+            first,
+            after,
+        });
+        let resp: GraphqlResponse<TeamProjectsQuery> =
+            execute_with_retry(client, api_key, &op.query, op.variables).await?;
+        if let Some(errors) = resp.errors {
             return Err(map_errors(errors));
         }
-        let data = body.data.ok_or_else(|| {
+        let data = resp.data.ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput(
                 "empty response from Linear API".to_string(),
             )
         })?;
         Ok((data.team.projects.nodes, data.team.projects.page_info))
     } else {
-        #[derive(Serialize)]
-        struct Vars {
-            first: i32,
-            after: Option<String>,
-        }
-        let resp = execute_with_retry(
-            client,
-            api_key,
-            PROJECTS_QUERY,
-            Vars { first, after },
-        )
-        .await?;
-        let body: GraphqlResponse<ProjectsData> = resp;
-        if let Some(errors) = body.errors {
+        let op = ProjectsQuery::build(ProjectsVariables { first, after });
+        let resp: GraphqlResponse<ProjectsQuery> =
+            execute_with_retry(client, api_key, &op.query, op.variables).await?;
+        if let Some(errors) = resp.errors {
             return Err(map_errors(errors));
         }
-        let data = body.data.ok_or_else(|| {
+        let data = resp.data.ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput(
                 "empty response from Linear API".to_string(),
             )
@@ -209,63 +175,64 @@ pub async fn fetch_projects(
 
 // ---- Get Project ----
 
-#[derive(Deserialize, Debug)]
-pub struct GetProjectData {
+#[derive(cynic::QueryVariables, Debug)]
+pub struct GetProjectVariables {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Query", variables = "GetProjectVariables")]
+pub struct GetProjectQuery {
+    #[arguments(id: $id)]
     pub project: Option<ProjectNode>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct SlugLookupData {
-    pub projects: SlugProjectConnection,
+// ---- Slug Lookup ----
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Project")]
+pub struct SlugProjectNode {
+    pub id: cynic::Id,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "ProjectConnection")]
 pub struct SlugProjectConnection {
     pub nodes: Vec<SlugProjectNode>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct SlugProjectNode {
-    pub id: String,
+#[derive(cynic::InputObject, Debug)]
+#[cynic(graphql_type = "ProjectFilter")]
+pub struct ProjectFilter {
+    pub slug_id: Option<StringComparator>,
 }
 
-const GET_PROJECT_QUERY: &str = r#"
-query GetProject($id: String!) {
-  project(id: $id) {
-    id
-    name
-    description
-    slugId
-    progress
-    state
-    lead { id }
-    teams(first: 50) { nodes { id } }
-    startDate
-    targetDate
-    updatedAt
-  }
+#[derive(cynic::InputObject, Debug)]
+#[cynic(graphql_type = "StringComparator")]
+pub struct StringComparator {
+    pub eq: Option<String>,
 }
-"#;
 
-const SLUG_LOOKUP_QUERY: &str = r#"
-query SlugLookup($slugId: String!) {
-  projects(filter: { slugId: { eq: $slugId } }, first: 1) {
-    nodes { id }
-  }
+#[derive(cynic::QueryVariables, Debug)]
+pub struct SlugLookupVariables {
+    pub filter: ProjectFilter,
 }
-"#;
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Query", variables = "SlugLookupVariables")]
+pub struct SlugLookupQuery {
+    #[arguments(filter: $filter, first: 1)]
+    pub projects: SlugProjectConnection,
+}
 
 pub async fn fetch_project_by_id(
     client: &reqwest::Client,
     api_key: &str,
     id: &str,
 ) -> Result<ProjectNode, crate::domain::errors::DomainError> {
-    #[derive(Serialize)]
-    struct Vars<'a> {
-        id: &'a str,
-    }
-    let resp: GraphqlResponse<GetProjectData> =
-        execute_with_retry(client, api_key, GET_PROJECT_QUERY, Vars { id }).await?;
+    let op = GetProjectQuery::build(GetProjectVariables { id: id.to_string() });
+    let resp: GraphqlResponse<GetProjectQuery> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
@@ -282,14 +249,13 @@ pub async fn resolve_slug_to_uuid(
     api_key: &str,
     slug: &str,
 ) -> Result<String, crate::domain::errors::DomainError> {
-    #[derive(Serialize)]
-    struct Vars<'a> {
-        #[serde(rename = "slugId")]
-        slug_id: &'a str,
-    }
-    let resp: GraphqlResponse<SlugLookupData> =
-        execute_with_retry(client, api_key, SLUG_LOOKUP_QUERY, Vars { slug_id: slug })
-            .await?;
+    let op = SlugLookupQuery::build(SlugLookupVariables {
+        filter: ProjectFilter {
+            slug_id: Some(StringComparator { eq: Some(slug.to_string()) }),
+        },
+    });
+    let resp: GraphqlResponse<SlugLookupQuery> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
@@ -301,50 +267,65 @@ pub async fn resolve_slug_to_uuid(
         .nodes
         .into_iter()
         .next()
-        .map(|n| n.id)
+        .map(|n| n.id.into_inner())
         .ok_or_else(|| crate::domain::errors::DomainError::NotFound(slug.to_string()))
 }
 
 // ---- Workspace project statuses ----
 
-#[derive(Deserialize, Debug)]
-pub struct OrgStatusData {
-    pub organization: OrgWithStatuses,
+#[derive(cynic::Enum, Debug, PartialEq, Clone, Copy)]
+#[cynic(graphql_type = "ProjectStatusType", rename_all = "camelCase")]
+pub enum ProjectStatusType {
+    Backlog,
+    Canceled,
+    Completed,
+    Paused,
+    Planned,
+    Started,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "ProjectStatus")]
+pub struct ProjectStatusNode {
+    pub id: cynic::Id,
+    #[cynic(rename = "type")]
+    pub status_type: ProjectStatusType,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Organization")]
 pub struct OrgWithStatuses {
     pub project_statuses: Vec<ProjectStatusNode>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct ProjectStatusNode {
-    pub id: String,
-    #[serde(rename = "type")]
-    pub status_type: String,
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Query")]
+pub struct OrgStatusQuery {
+    pub organization: OrgWithStatuses,
 }
-
-const ORG_PROJECT_STATUSES_QUERY: &str = r#"
-query OrgProjectStatuses {
-  organization {
-    projectStatuses { id type }
-  }
-}
-"#;
 
 pub async fn fetch_status_id_for_type(
     client: &reqwest::Client,
     api_key: &str,
     state_type: &str,
 ) -> Result<String, crate::domain::errors::DomainError> {
-    let resp: GraphqlResponse<OrgStatusData> = execute_with_retry(
-        client,
-        api_key,
-        ORG_PROJECT_STATUSES_QUERY,
-        serde_json::json!({}),
-    )
-    .await?;
+    let target = match state_type {
+        "cancelled" | "canceled" => ProjectStatusType::Canceled,
+        "backlog" => ProjectStatusType::Backlog,
+        "completed" => ProjectStatusType::Completed,
+        "paused" => ProjectStatusType::Paused,
+        "planned" => ProjectStatusType::Planned,
+        "started" => ProjectStatusType::Started,
+        other => {
+            return Err(crate::domain::errors::DomainError::InvalidInput(format!(
+                "unknown project status type: '{}'",
+                other
+            )))
+        }
+    };
+    let op = OrgStatusQuery::build(());
+    let resp: GraphqlResponse<OrgStatusQuery> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
@@ -355,14 +336,10 @@ pub async fn fetch_status_id_for_type(
         })?
         .organization
         .project_statuses;
-    let normalized = match state_type {
-        "cancelled" => "canceled",
-        other => other,
-    };
     statuses
         .into_iter()
-        .find(|s| s.status_type == normalized)
-        .map(|s| s.id)
+        .find(|s| s.status_type == target)
+        .map(|s| s.id.into_inner())
         .ok_or_else(|| {
             crate::domain::errors::DomainError::InvalidInput(format!(
                 "no project status of type '{}' found in workspace",
