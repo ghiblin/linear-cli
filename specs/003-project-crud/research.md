@@ -1,6 +1,6 @@
 # Research: Project CRUD Operations
 
-**Branch**: `004-project-crud` | **Date**: 2026-04-23
+**Branch**: `003-project-crud` | **Date**: 2026-04-23
 
 ## Decision 1: Adopt cynic v3 for all new GraphQL operations
 

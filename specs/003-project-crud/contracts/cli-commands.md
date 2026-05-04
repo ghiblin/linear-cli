@@ -1,6 +1,6 @@
 # CLI Command Contracts: Project CRUD
 
-**Branch**: `004-project-crud` | **Date**: 2026-04-23
+**Branch**: `003-project-crud` | **Date**: 2026-04-23
 
 These contracts define the stable interface for all `linear project` subcommands. Changes to arguments, flags, or output schemas are **breaking** and require a major version bump per the constitution's AI Agent Interaction Contract.
 
