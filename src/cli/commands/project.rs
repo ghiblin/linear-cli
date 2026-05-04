@@ -141,6 +141,21 @@ pub struct ArchiveArgs {
     pub debug: bool,
 }
 
+impl ProjectCommand {
+    /// Returns the effective verbosity level from per-subcommand flags:
+    /// 2 = --debug (DEBUG tracing), 1 = --verbose (INFO tracing), 0 = default.
+    pub fn verbosity(&self) -> u8 {
+        let (verbose, debug) = match &self.subcommand {
+            ProjectSubcommand::List(a) => (a.verbose, a.debug),
+            ProjectSubcommand::Get(a) => (a.verbose, a.debug),
+            ProjectSubcommand::Create(a) => (a.verbose, a.debug),
+            ProjectSubcommand::Update(a) => (a.verbose, a.debug),
+            ProjectSubcommand::Archive(a) => (a.verbose, a.debug),
+        };
+        if debug { 2 } else if verbose { 1 } else { 0 }
+    }
+}
+
 // ---- Output DTOs ----
 
 #[derive(Serialize)]

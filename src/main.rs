@@ -37,7 +37,12 @@ async fn main() {
         }
     };
 
-    init_tracing(cli.verbose);
+    let project_verbosity = if let Some(Commands::Project(cmd)) = &cli.command {
+        cmd.verbosity()
+    } else {
+        0
+    };
+    init_tracing(cli.verbose.max(project_verbosity));
 
     if cli.version {
         let info = VersionInfo {
