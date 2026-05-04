@@ -1,7 +1,7 @@
 # Implementation Plan: Project CRUD Operations
 
-**Branch**: `004-project-crud` | **Date**: 2026-04-23 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `/specs/004-project-crud/spec.md`
+**Branch**: `003-project-crud` | **Date**: 2026-04-23 | **Spec**: [spec.md](spec.md)
+**Input**: Feature specification from `/specs/003-project-crud/spec.md`
 
 ## Summary
 
@@ -37,7 +37,7 @@ Implement the full CRUD lifecycle for Linear projects — list, get, create, upd
 ### Documentation (this feature)
 
 ```text
-specs/004-project-crud/
+specs/003-project-crud/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

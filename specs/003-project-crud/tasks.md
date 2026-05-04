@@ -1,6 +1,6 @@
 # Tasks: Project CRUD Operations
 
-**Input**: Design documents from `/specs/004-project-crud/`
+**Input**: Design documents from `/specs/003-project-crud/`
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/cli-commands.md ✅, quickstart.md ✅
 
 **Tests**: Unit tests included per plan.md's Test-First constitution requirement (co-located in `#[cfg(test)]` modules per Rust convention); integration/e2e tests in `tests/`.

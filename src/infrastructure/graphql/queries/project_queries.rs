@@ -325,7 +325,7 @@ pub async fn fetch_status_id_for_type(
     };
     let op = OrgStatusQuery::build(());
     let resp: GraphqlResponse<OrgStatusQuery> =
-        execute_with_retry(client, api_key, &op.query, op.variables).await?;
+        execute_with_retry(client, api_key, &op.query, ()).await?;
     if let Some(errors) = resp.errors {
         return Err(map_errors(errors));
     }
@@ -425,6 +425,11 @@ async fn try_execute<V: Serialize, T: for<'de> serde::Deserialize<'de>>(
     variables: &V,
 ) -> Result<GraphqlResponse<T>, crate::domain::errors::DomainError> {
     let body = GraphqlRequest { query, variables };
+    if tracing::enabled!(tracing::Level::DEBUG) {
+        let req_json = serde_json::to_string(&body)
+            .unwrap_or_else(|_| "<serialization error>".to_string());
+        tracing::debug!(request = %req_json, "GraphQL request");
+    }
     let response = client
         .post(LINEAR_API_URL)
         .header("Authorization", api_key)
@@ -440,8 +445,11 @@ async fn try_execute<V: Serialize, T: for<'de> serde::Deserialize<'de>>(
         ));
     }
 
-    response
-        .json::<GraphqlResponse<T>>()
+    let text = response
+        .text()
         .await
+        .map_err(|e| crate::domain::errors::DomainError::InvalidInput(e.to_string()))?;
+    tracing::debug!(response = %text, "GraphQL response");
+    serde_json::from_str::<GraphqlResponse<T>>(&text)
         .map_err(|e| crate::domain::errors::DomainError::InvalidInput(e.to_string()))
 }
