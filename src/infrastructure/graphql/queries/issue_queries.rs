@@ -5,10 +5,7 @@ use crate::infrastructure::graphql::queries::project_queries::{
     GraphqlResponse, PageInfoNode, execute_with_retry, map_errors,
 };
 
-use crate::domain::{
-    entities::issue::ListIssuesInput,
-    errors::DomainError,
-};
+use crate::domain::{entities::issue::ListIssuesInput, errors::DomainError};
 
 // ---- Filter input types ----
 
@@ -311,7 +308,9 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
     });
     let priority = input.priority.as_ref().map(|p| {
         let pv = *p as u8;
-        NullableNumberComparatorInput { eq: Some(pv as f64) }
+        NullableNumberComparatorInput {
+            eq: Some(pv as f64),
+        }
     });
     // Build per-label sub-filters. FR-002 requires AND semantics: an issue must
     // carry ALL specified labels. Linear's IssueFilter.and field chains filters
@@ -328,23 +327,25 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
         }),
     });
     let extra_label_filters: Vec<Box<IssueFilterInput>> = label_iter
-        .map(|l| Box::new(IssueFilterInput {
-            labels: Some(LabelCollectionFilterInput {
-                some: Some(IssueLabelFilterInput {
-                    id: Some(IdComparatorInput {
-                        eq: Some(cynic::Id::new(l.to_string())),
-                        in_list: None,
+        .map(|l| {
+            Box::new(IssueFilterInput {
+                labels: Some(LabelCollectionFilterInput {
+                    some: Some(IssueLabelFilterInput {
+                        id: Some(IdComparatorInput {
+                            eq: Some(cynic::Id::new(l.to_string())),
+                            in_list: None,
+                        }),
                     }),
                 }),
-            }),
-            team: None,
-            project: None,
-            state: None,
-            assignee: None,
-            priority: None,
-            id: None,
-            and: None,
-        }))
+                team: None,
+                project: None,
+                state: None,
+                assignee: None,
+                priority: None,
+                id: None,
+                and: None,
+            })
+        })
         .collect();
     let and = if extra_label_filters.is_empty() {
         None

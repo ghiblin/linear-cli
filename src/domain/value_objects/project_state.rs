@@ -59,18 +59,42 @@ mod tests {
 
     #[test]
     fn parse_valid_states() {
-        assert_eq!("planned".parse::<ProjectState>().unwrap(), ProjectState::Planned);
-        assert_eq!("started".parse::<ProjectState>().unwrap(), ProjectState::Started);
-        assert_eq!("paused".parse::<ProjectState>().unwrap(), ProjectState::Paused);
-        assert_eq!("completed".parse::<ProjectState>().unwrap(), ProjectState::Completed);
-        assert_eq!("cancelled".parse::<ProjectState>().unwrap(), ProjectState::Cancelled);
-        assert_eq!("canceled".parse::<ProjectState>().unwrap(), ProjectState::Cancelled);
+        assert_eq!(
+            "planned".parse::<ProjectState>().unwrap(),
+            ProjectState::Planned
+        );
+        assert_eq!(
+            "started".parse::<ProjectState>().unwrap(),
+            ProjectState::Started
+        );
+        assert_eq!(
+            "paused".parse::<ProjectState>().unwrap(),
+            ProjectState::Paused
+        );
+        assert_eq!(
+            "completed".parse::<ProjectState>().unwrap(),
+            ProjectState::Completed
+        );
+        assert_eq!(
+            "cancelled".parse::<ProjectState>().unwrap(),
+            ProjectState::Cancelled
+        );
+        assert_eq!(
+            "canceled".parse::<ProjectState>().unwrap(),
+            ProjectState::Cancelled
+        );
     }
 
     #[test]
     fn parse_is_case_insensitive() {
-        assert_eq!("PLANNED".parse::<ProjectState>().unwrap(), ProjectState::Planned);
-        assert_eq!("Started".parse::<ProjectState>().unwrap(), ProjectState::Started);
+        assert_eq!(
+            "PLANNED".parse::<ProjectState>().unwrap(),
+            ProjectState::Planned
+        );
+        assert_eq!(
+            "Started".parse::<ProjectState>().unwrap(),
+            ProjectState::Started
+        );
     }
 
     #[test]

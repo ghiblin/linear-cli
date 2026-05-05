@@ -3,13 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::domain::{
     errors::DomainError,
     value_objects::{
-        issue_id::IssueId,
-        label_id::LabelId,
-        priority::Priority,
-        project_id::ProjectId,
-        team_id::TeamId,
-        user_id::UserId,
-        workflow_state_ref::WorkflowStateRef,
+        issue_id::IssueId, label_id::LabelId, priority::Priority, project_id::ProjectId,
+        team_id::TeamId, user_id::UserId, workflow_state_ref::WorkflowStateRef,
     },
 };
 

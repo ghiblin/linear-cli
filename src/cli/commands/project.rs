@@ -21,8 +21,7 @@ use crate::{
         value_objects::{ProjectId, ProjectState, api_key::ApiKey},
     },
     infrastructure::{
-        auth::keyring_store::KeyringCredentialStore,
-        graphql::client::LinearGraphqlClient,
+        auth::keyring_store::KeyringCredentialStore, graphql::client::LinearGraphqlClient,
         repositories::project_repository::LinearProjectRepository,
     },
 };
@@ -57,7 +56,11 @@ pub struct ListArgs {
     pub cursor: Option<String>,
     #[arg(long, help = "Fetch all pages")]
     pub all: bool,
-    #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
+    #[arg(
+        long = "output",
+        value_name = "FORMAT",
+        help = "Output format: json or human"
+    )]
     pub output: Option<String>,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
@@ -67,7 +70,11 @@ pub struct ListArgs {
 pub struct GetArgs {
     #[arg(help = "Project UUID or slug")]
     pub id: String,
-    #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
+    #[arg(
+        long = "output",
+        value_name = "FORMAT",
+        help = "Output format: json or human"
+    )]
     pub output: Option<String>,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
@@ -89,7 +96,11 @@ pub struct CreateArgs {
     pub target_date: Option<String>,
     #[arg(long, help = "Dry run (no API call)")]
     pub dry_run: bool,
-    #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
+    #[arg(
+        long = "output",
+        value_name = "FORMAT",
+        help = "Output format: json or human"
+    )]
     pub output: Option<String>,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
@@ -113,7 +124,11 @@ pub struct UpdateArgs {
     pub target_date: Option<String>,
     #[arg(long, help = "Dry run (no API call)")]
     pub dry_run: bool,
-    #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
+    #[arg(
+        long = "output",
+        value_name = "FORMAT",
+        help = "Output format: json or human"
+    )]
     pub output: Option<String>,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
@@ -125,7 +140,11 @@ pub struct ArchiveArgs {
     pub id: String,
     #[arg(long, help = "Dry run (no API call)")]
     pub dry_run: bool,
-    #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
+    #[arg(
+        long = "output",
+        value_name = "FORMAT",
+        help = "Output format: json or human"
+    )]
     pub output: Option<String>,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
@@ -163,6 +182,7 @@ struct PageInfoDto {
 #[derive(Serialize)]
 struct ProjectDto {
     id: String,
+    slug_id: String,
     name: String,
     description: Option<String>,
     state: String,
@@ -178,6 +198,7 @@ impl From<&crate::domain::entities::project::Project> for ProjectDto {
     fn from(p: &crate::domain::entities::project::Project) -> Self {
         Self {
             id: p.id.clone(),
+            slug_id: p.slug_id.clone(),
             name: p.name.clone(),
             description: p.description.clone(),
             state: p.state.to_string(),
@@ -194,6 +215,7 @@ impl From<&crate::domain::entities::project::Project> for ProjectDto {
 #[derive(Serialize)]
 struct MutationResultDto {
     id: String,
+    slug_id: String,
     name: String,
     state: String,
 }
@@ -272,8 +294,13 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 })
                 .unwrap();
             verbose_print(verbose, "Fetching projects…");
-            let result = uc.execute(team_id, args.limit, args.cursor.clone(), args.all).await?;
-            verbose_print(verbose, &format!("Found {} project(s).", result.items.len()));
+            let result = uc
+                .execute(team_id, args.limit, args.cursor.clone(), args.all)
+                .await?;
+            verbose_print(
+                verbose,
+                &format!("Found {} project(s).", result.items.len()),
+            );
 
             if should_use_json(use_json) {
                 let dto = ProjectListDto {
@@ -287,12 +314,24 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
             } else {
                 println!("Projects ({}):", result.items.len());
                 for p in &result.items {
-                    let date = p.target_date.map(|d| d.to_string()).unwrap_or_else(|| "—".to_string());
-                    println!("  {:<40} {:<12} {}", p.name, p.state.to_string(), date);
+                    let date = p
+                        .target_date
+                        .map(|d| d.to_string())
+                        .unwrap_or_else(|| "—".to_string());
+                    println!(
+                        "  {:<35} {:<22} {:<12} {}",
+                        p.name,
+                        p.slug_id,
+                        p.state.to_string(),
+                        date
+                    );
                 }
                 if result.page_info.has_next_page {
                     if let Some(cursor) = &result.page_info.end_cursor {
-                        println!("\nMore results — run with --cursor {} for next page", cursor);
+                        println!(
+                            "\nMore results — run with --cursor {} for next page",
+                            cursor
+                        );
                     }
                 }
             }
@@ -301,10 +340,12 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         ProjectSubcommand::Get(args) => {
             let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
-            let id = ProjectId::parse(&args.id).map_err(|e| {
-                eprintln!("error: {}", e);
-                std::process::exit(1);
-            }).unwrap();
+            let id = ProjectId::parse(&args.id)
+                .map_err(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                })
+                .unwrap();
 
             verbose_print(verbose, &format!("Fetching project {}…", args.id));
             let uc = GetProject::new(repo);
@@ -315,6 +356,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                         println!("{}", format_json(&dto));
                     } else {
                         println!("Name:        {}", project.name);
+                        println!("Slug:        {}", project.slug_id);
                         println!("ID:          {}", project.id);
                         println!("State:       {}", project.state);
                         println!("Progress:    {:.1}%", project.progress);
@@ -324,7 +366,15 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                         if let Some(lead) = &project.lead_id {
                             println!("Lead:        {}", lead);
                         }
-                        println!("Teams:       {}", project.team_ids.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(", "));
+                        println!(
+                            "Teams:       {}",
+                            project
+                                .team_ids
+                                .iter()
+                                .map(|t| t.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        );
                         if let Some(d) = project.start_date {
                             println!("Start date:  {}", d);
                         }
@@ -376,19 +426,26 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 } else {
                     println!("[dry-run] Would create project:");
                     println!("  name:        {}", args.name);
+                    println!("  team(s):     {}", args.teams.join(", "));
                     println!(
-                        "  team(s):     {}",
-                        args.teams.join(", ")
+                        "  description: {}",
+                        args.description.as_deref().unwrap_or("(none)")
                     );
-                    println!("  description: {}", args.description.as_deref().unwrap_or("(none)"));
-                    println!("  lead:        {}", args.lead.as_deref().unwrap_or("(none)"));
+                    println!(
+                        "  lead:        {}",
+                        args.lead.as_deref().unwrap_or("(none)")
+                    );
                     println!(
                         "  start date:  {}",
-                        start_date.map(|d| d.to_string()).unwrap_or_else(|| "(none)".to_string())
+                        start_date
+                            .map(|d| d.to_string())
+                            .unwrap_or_else(|| "(none)".to_string())
                     );
                     println!(
                         "  target date: {}",
-                        target_date.map(|d| d.to_string()).unwrap_or_else(|| "(none)".to_string())
+                        target_date
+                            .map(|d| d.to_string())
+                            .unwrap_or_else(|| "(none)".to_string())
                     );
                 }
                 return Ok(());
@@ -400,12 +457,16 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 if should_use_json(use_json) {
                     let dto = MutationResultDto {
                         id: project.id.clone(),
+                        slug_id: project.slug_id.clone(),
                         name: project.name.clone(),
                         state: project.state.to_string(),
                     };
                     println!("{}", format_json(&dto));
                 } else {
-                    println!("Created project: \"{}\" ({})", project.name, project.id);
+                    println!(
+                        "Created project: \"{}\" ({})",
+                        project.name, project.slug_id
+                    );
                 }
             }
         }
@@ -450,10 +511,12 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 std::process::exit(1);
             }
 
-            let id = ProjectId::parse(&args.id).map_err(|e| {
-                eprintln!("error: {}", e);
-                std::process::exit(1);
-            }).unwrap();
+            let id = ProjectId::parse(&args.id)
+                .map_err(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                })
+                .unwrap();
 
             if args.dry_run {
                 if should_use_json(use_json) {
@@ -482,12 +545,16 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 if should_use_json(use_json) {
                     let dto = MutationResultDto {
                         id: project.id.clone(),
+                        slug_id: project.slug_id.clone(),
                         name: project.name.clone(),
                         state: project.state.to_string(),
                     };
                     println!("{}", format_json(&dto));
                 } else {
-                    println!("Updated project {}: state → {}", project.id, project.state);
+                    println!(
+                        "Updated project {}: state → {}",
+                        project.slug_id, project.state
+                    );
                 }
             }
         }
@@ -496,10 +563,12 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
             let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let id_str = args.id.clone();
-            let id = ProjectId::parse(&id_str).map_err(|e| {
-                eprintln!("error: {}", e);
-                std::process::exit(1);
-            }).unwrap();
+            let id = ProjectId::parse(&id_str)
+                .map_err(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                })
+                .unwrap();
 
             if args.dry_run {
                 if should_use_json(use_json) {
@@ -520,7 +589,11 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
             match uc.execute(id, false).await {
                 Ok(ArchiveOutcome::Archived) => {
                     if should_use_json(use_json) {
-                        let dto = ArchiveResultDto { success: true, id: id_str, already_archived: false };
+                        let dto = ArchiveResultDto {
+                            success: true,
+                            id: id_str,
+                            already_archived: false,
+                        };
                         println!("{}", format_json(&dto));
                     } else {
                         println!("Archived project {}", args.id);
@@ -528,7 +601,11 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 }
                 Ok(ArchiveOutcome::AlreadyArchived) => {
                     if should_use_json(use_json) {
-                        let dto = ArchiveResultDto { success: true, id: id_str, already_archived: true };
+                        let dto = ArchiveResultDto {
+                            success: true,
+                            id: id_str,
+                            already_archived: true,
+                        };
                         println!("{}", format_json(&dto));
                     } else {
                         println!("Project {} is already archived", args.id);
@@ -549,6 +626,95 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::entities::project::Project;
+    use crate::domain::value_objects::ProjectState;
+    use chrono::Utc;
+
+    fn make_test_project() -> Project {
+        Project::new(
+            "9cfb482a-81e3-4154-b5b9-2c805e70a02d".into(),
+            "Q3 Platform".into(),
+            None,
+            ProjectState::Started,
+            42.0,
+            None,
+            vec![],
+            None,
+            None,
+            Utc::now(),
+            "q3-platform".into(),
+        )
+        .unwrap()
+    }
+
+    // T002
+    #[test]
+    fn list_row_includes_slug_column() {
+        let p = make_test_project();
+        let date = p
+            .target_date
+            .map(|d| d.to_string())
+            .unwrap_or_else(|| "—".to_string());
+        let row = format!(
+            "  {:<35} {:<22} {:<12} {}",
+            p.name,
+            p.slug_id,
+            p.state.to_string(),
+            date
+        );
+        assert!(row.contains("q3-platform"), "list row must contain slug");
+        assert!(row.contains("Q3 Platform"), "list row must contain name");
+    }
+
+    // T003
+    #[test]
+    fn get_output_has_slug_line_after_name() {
+        let p = make_test_project();
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(format!("Name:        {}", p.name));
+        lines.push(format!("Slug:        {}", p.slug_id));
+        lines.push(format!("ID:          {}", p.id));
+        assert_eq!(lines[0], "Name:        Q3 Platform");
+        assert_eq!(lines[1], "Slug:        q3-platform");
+    }
+
+    // T007
+    #[test]
+    fn create_message_uses_slug_in_parenthetical() {
+        let p = make_test_project();
+        let msg = format!("Created project: \"{}\" ({})", p.name, p.slug_id);
+        assert_eq!(msg, "Created project: \"Q3 Platform\" (q3-platform)");
+    }
+
+    // T008
+    #[test]
+    fn update_message_uses_slug_as_identifier() {
+        let p = make_test_project();
+        let msg = format!("Updated project {}: state → {}", p.slug_id, p.state);
+        assert_eq!(msg, "Updated project q3-platform: state → started");
+    }
+
+    // T012
+    #[test]
+    fn project_dto_includes_slug_id() {
+        let p = make_test_project();
+        let dto = ProjectDto::from(&p);
+        assert_eq!(dto.slug_id, "q3-platform");
+    }
+
+    // T013
+    #[test]
+    fn mutation_result_dto_includes_slug_id() {
+        let dto = MutationResultDto {
+            id: "9cfb482a-81e3-4154-b5b9-2c805e70a02d".into(),
+            slug_id: "q3-platform".into(),
+            name: "Q3 Platform".into(),
+            state: "started".into(),
+        };
+        let json = serde_json::to_string(&dto).unwrap();
+        assert!(json.contains("\"slug_id\""));
+        assert!(json.contains("\"q3-platform\""));
+    }
 
     #[test]
     fn list_args_has_debug_flag() {
@@ -565,7 +731,11 @@ mod tests {
 
     #[test]
     fn get_args_has_debug_flag() {
-        let args = GetArgs { id: "id".into(), output: None, debug: false };
+        let args = GetArgs {
+            id: "id".into(),
+            output: None,
+            debug: false,
+        };
         assert!(!args.debug);
     }
 
@@ -604,7 +774,12 @@ mod tests {
 
     #[test]
     fn archive_args_has_debug_flag() {
-        let args = ArchiveArgs { id: "id".into(), dry_run: false, output: None, debug: false };
+        let args = ArchiveArgs {
+            id: "id".into(),
+            dry_run: false,
+            output: None,
+            debug: false,
+        };
         assert!(!args.debug);
     }
 }

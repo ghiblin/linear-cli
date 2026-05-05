@@ -50,7 +50,14 @@ fn issue_update_no_flags_exits_1() {
 #[test]
 fn issue_update_parent_and_no_parent_conflict_exits_1() {
     let output = Command::new(env!("CARGO_BIN_EXE_linear"))
-        .args(["issue", "update", "ENG-1", "--parent", "ENG-2", "--no-parent"])
+        .args([
+            "issue",
+            "update",
+            "ENG-1",
+            "--parent",
+            "ENG-2",
+            "--no-parent",
+        ])
         .env("SKIP_KEYCHAIN_TESTS", "0")
         .output()
         .unwrap();
@@ -78,7 +85,16 @@ fn issue_get_exits_3_when_not_authenticated() {
 #[test]
 fn issue_create_exits_3_when_not_authenticated() {
     let output = Command::new(env!("CARGO_BIN_EXE_linear"))
-        .args(["issue", "create", "--title", "Test", "--team", "ENG", "--project", "proj-1"])
+        .args([
+            "issue",
+            "create",
+            "--title",
+            "Test",
+            "--team",
+            "ENG",
+            "--project",
+            "proj-1",
+        ])
         .env("SKIP_KEYCHAIN_TESTS", "0")
         .output()
         .unwrap();

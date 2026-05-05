@@ -12,8 +12,7 @@ use crate::{
     },
     infrastructure::graphql::{
         mutations::project_mutations::{
-            ProjectCreateInput, ProjectUpdateInput, archive_project, create_project,
-            update_project,
+            ProjectCreateInput, ProjectUpdateInput, archive_project, create_project, update_project,
         },
         queries::project_queries::{
             ProjectNode, fetch_project_by_id, fetch_projects, fetch_status_id_for_type,
@@ -47,9 +46,7 @@ impl LinearProjectRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::infrastructure::graphql::queries::project_queries::{
-        ProjectNode, TeamConnection,
-    };
+    use crate::infrastructure::graphql::queries::project_queries::{ProjectNode, TeamConnection};
 
     fn make_node(progress: f64) -> ProjectNode {
         ProjectNode {
@@ -118,7 +115,11 @@ fn node_to_project(node: ProjectNode) -> Result<Project, DomainError> {
         project_state_from_str(&node.state),
         node.progress * 100.0,
         node.lead.and_then(|l| UserId::new(l.id.into_inner()).ok()),
-        node.teams.nodes.into_iter().filter_map(|t| TeamId::new(t.id.into_inner()).ok()).collect(),
+        node.teams
+            .nodes
+            .into_iter()
+            .filter_map(|t| TeamId::new(t.id.into_inner()).ok())
+            .collect(),
         node.start_date.as_deref().and_then(parse_date),
         node.target_date.as_deref().and_then(parse_date),
         parse_datetime(&node.updated_at),
@@ -163,7 +164,11 @@ impl ProjectRepository for LinearProjectRepository {
         let status_id = None;
         let vars = ProjectCreateInput {
             name: input.name,
-            team_ids: input.team_ids.iter().map(|t| t.as_str().to_string()).collect(),
+            team_ids: input
+                .team_ids
+                .iter()
+                .map(|t| t.as_str().to_string())
+                .collect(),
             description: input.description,
             lead_id: input.lead_id.map(|l| l.as_str().to_string()),
             start_date: input.start_date.map(|d| d.to_string()),
@@ -182,9 +187,7 @@ impl ProjectRepository for LinearProjectRepository {
     ) -> Result<Project, DomainError> {
         let uuid = self.resolve_id(&id).await?;
         let status_id = if let Some(ref state) = input.state {
-            Some(
-                fetch_status_id_for_type(&self.http, &self.api_key, &state.to_string()).await?,
-            )
+            Some(fetch_status_id_for_type(&self.http, &self.api_key, &state.to_string()).await?)
         } else {
             None
         };

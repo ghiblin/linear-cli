@@ -7,30 +7,20 @@ use crate::{
     application::{
         errors::ApplicationError,
         use_cases::{
-            create_issue::CreateIssue,
-            get_issue::GetIssue,
-            list_issues::ListIssues,
+            create_issue::CreateIssue, get_issue::GetIssue, list_issues::ListIssues,
             update_issue::UpdateIssue,
         },
     },
     cli::output::{format_json, should_use_json},
     domain::{
-        entities::issue::{
-            CreateIssueInput, Issue, ListIssuesInput, UpdateIssueInput,
-        },
+        entities::issue::{CreateIssueInput, Issue, ListIssuesInput, UpdateIssueInput},
         value_objects::{
-            LabelId,
-            api_key::ApiKey,
-            issue_id::IssueId,
-            priority::Priority,
-            project_id::ProjectId,
-            team_id::TeamId,
-            user_id::UserId,
+            LabelId, api_key::ApiKey, issue_id::IssueId, priority::Priority, project_id::ProjectId,
+            team_id::TeamId, user_id::UserId,
         },
     },
     infrastructure::{
-        auth::keyring_store::KeyringCredentialStore,
-        graphql::client::LinearGraphqlClient,
+        auth::keyring_store::KeyringCredentialStore, graphql::client::LinearGraphqlClient,
         repositories::issue_repository::LinearIssueRepository,
     },
 };
@@ -258,7 +248,11 @@ fn format_issue_human(issue: &Issue) {
     if let Some(ref pt) = issue.parent_title {
         println!(
             "Parent:     {} ({})",
-            issue.parent_id.as_ref().map(|i| i.to_string()).unwrap_or_default(),
+            issue
+                .parent_id
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or_default(),
             pt
         );
     }
@@ -282,7 +276,10 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
     use crate::application::use_cases::resolve_auth::resolve_auth;
     use crate::domain::repositories::credential_store::CredentialStore;
 
-    if let IssueSubcommand::Update { parent, no_parent, .. } = &cmd.subcommand {
+    if let IssueSubcommand::Update {
+        parent, no_parent, ..
+    } = &cmd.subcommand
+    {
         if parent.is_some() && *no_parent {
             eprintln!("Error: --parent and --no-parent are mutually exclusive");
             std::process::exit(1);
@@ -381,10 +378,13 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
         IssueSubcommand::Get { id, output } => {
             let repo = LinearIssueRepository::new(api_key_str);
             let use_case = GetIssue::new(Box::new(repo));
-            let issue = use_case.execute(id.clone()).await.map_err(|e: ApplicationError| {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            })?;
+            let issue = use_case
+                .execute(id.clone())
+                .await
+                .map_err(|e: ApplicationError| {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                })?;
 
             let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
             if use_json {
@@ -461,10 +461,13 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
 
             let repo = LinearIssueRepository::new(api_key_str);
             let use_case = CreateIssue::new(Box::new(repo));
-            let issue = use_case.execute(input, false).await.map_err(|e: ApplicationError| {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            })?;
+            let issue = use_case
+                .execute(input, false)
+                .await
+                .map_err(|e: ApplicationError| {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                })?;
 
             let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
             if use_json {
@@ -531,10 +534,12 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
 
             let repo = LinearIssueRepository::new(api_key_str);
             let use_case = UpdateIssue::new(Box::new(repo));
-            let issue = use_case.execute(id.clone(), input, false).await.map_err(|e: ApplicationError| {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            })?;
+            let issue = use_case.execute(id.clone(), input, false).await.map_err(
+                |e: ApplicationError| {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                },
+            )?;
 
             let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
             if use_json {

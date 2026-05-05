@@ -19,7 +19,7 @@
 
 **Purpose**: Verify baseline before any changes
 
-- [ ] T001 Run `cargo test` to confirm all existing tests pass in `src/cli/commands/project.rs` before any modifications
+- [x] T001 Run `cargo test` to confirm all existing tests pass in `src/cli/commands/project.rs` before any modifications
 
 ---
 
@@ -39,14 +39,14 @@
 
 ### Tests for User Story 1 (TDD — write first, ensure they FAIL before T004)
 
-- [ ] T002 [US1] Write failing insta snapshot test for `project list` human output asserting slug column (`{:<22}`) appears between name and state columns in `src/cli/commands/project.rs`
-- [ ] T003 [US1] Write failing insta snapshot test for `project get` human output asserting `Slug:` line appears immediately after `Name:` line in `src/cli/commands/project.rs`
+- [x] T002 [US1] Write failing insta snapshot test for `project list` human output asserting slug column (`{:<22}`) appears between name and state columns in `src/cli/commands/project.rs`
+- [x] T003 [US1] Write failing insta snapshot test for `project get` human output asserting `Slug:` line appears immediately after `Name:` line in `src/cli/commands/project.rs`
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Update `project list` format string: change name column from `{:<40}` to `{:<35}` and insert slug column `{:<22}` between name and state in `src/cli/commands/project.rs`
-- [ ] T005 [US1] Add `println!("Slug:        {}", project.slug_id)` immediately after the `Name:` println in `project get` human output in `src/cli/commands/project.rs`
-- [ ] T006 [US1] Run `cargo insta review` to accept updated snapshots; confirm T002 and T003 pass with `cargo test`
+- [x] T004 [US1] Update `project list` format string: change name column from `{:<40}` to `{:<35}` and insert slug column `{:<22}` between name and state in `src/cli/commands/project.rs`
+- [x] T005 [US1] Add `println!("Slug:        {}", project.slug_id)` immediately after the `Name:` println in `project get` human output in `src/cli/commands/project.rs`
+- [x] T006 [US1] Run `cargo insta review` to accept updated snapshots; confirm T002 and T003 pass with `cargo test`
 
 **Checkpoint**: `cargo test` passes; `project list` shows slug column per `specs/005-improve-project-list/contracts/project-commands.md`; `project get` shows `Slug:` line
 
@@ -60,14 +60,14 @@
 
 ### Tests for User Story 2 (TDD — write first, ensure they FAIL before T009)
 
-- [ ] T007 [US2] Write failing insta snapshot test for `project create` human success message asserting slug appears in parentheses (e.g. `Created project: "Q3 Platform" (q3-platform)`) in `src/cli/commands/project.rs`
-- [ ] T008 [US2] Write failing insta snapshot test for `project update` human success message asserting slug used as identifier (e.g. `Updated project q3-platform: state → started`) in `src/cli/commands/project.rs`
+- [x] T007 [US2] Write failing insta snapshot test for `project create` human success message asserting slug appears in parentheses (e.g. `Created project: "Q3 Platform" (q3-platform)`) in `src/cli/commands/project.rs`
+- [x] T008 [US2] Write failing insta snapshot test for `project update` human success message asserting slug used as identifier (e.g. `Updated project q3-platform: state → started`) in `src/cli/commands/project.rs`
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Change `project create` success println from `project.id` to `project.slug_id` in the parenthetical (before: `(uuid)`, after: `(slug)`) in `src/cli/commands/project.rs`
-- [ ] T010 [US2] Change `project update` success println from `project.id` to `project.slug_id` as the project identifier in `src/cli/commands/project.rs`
-- [ ] T011 [US2] Run `cargo insta review` to accept updated snapshots; confirm T007 and T008 pass with `cargo test`
+- [x] T009 [US2] Change `project create` success println from `project.id` to `project.slug_id` in the parenthetical (before: `(uuid)`, after: `(slug)`) in `src/cli/commands/project.rs`
+- [x] T010 [US2] Change `project update` success println from `project.id` to `project.slug_id` as the project identifier in `src/cli/commands/project.rs`
+- [x] T011 [US2] Run `cargo insta review` to accept updated snapshots; confirm T007 and T008 pass with `cargo test`
 
 **Checkpoint**: `cargo test` passes; create message shows slug; update message shows slug per contracts
 
@@ -81,15 +81,15 @@
 
 ### Tests for User Story 3 (TDD — write first, ensure they FAIL before T014)
 
-- [ ] T012 [P] [US3] Write failing unit test `project_dto_includes_slug_id`: construct a `Project` fixture with a known `slug_id`, call `ProjectDto::from(&project)`, assert `dto.slug_id` equals the fixture value in `src/cli/commands/project.rs`
-- [ ] T013 [P] [US3] Write failing unit test `mutation_result_dto_includes_slug_id`: construct a `MutationResultDto` with a `slug_id` value, call `serde_json::to_string`, assert the output string contains `"slug_id"` in `src/cli/commands/project.rs`
+- [x] T012 [P] [US3] Write failing unit test `project_dto_includes_slug_id`: construct a `Project` fixture with a known `slug_id`, call `ProjectDto::from(&project)`, assert `dto.slug_id` equals the fixture value in `src/cli/commands/project.rs`
+- [x] T013 [P] [US3] Write failing unit test `mutation_result_dto_includes_slug_id`: construct a `MutationResultDto` with a `slug_id` value, call `serde_json::to_string`, assert the output string contains `"slug_id"` in `src/cli/commands/project.rs`
 
 ### Implementation for User Story 3
 
-- [ ] T014 [US3] Add `slug_id: String` field to `ProjectDto` struct in `src/cli/commands/project.rs`
-- [ ] T015 [US3] Add `slug_id: p.slug_id.clone()` to `From<&Project> for ProjectDto` implementation in `src/cli/commands/project.rs`
-- [ ] T016 [US3] Add `slug_id: String` field to `MutationResultDto` struct in `src/cli/commands/project.rs`
-- [ ] T017 [US3] Add `slug_id: project.slug_id.clone()` to `MutationResultDto` construction in both `project create` and `project update` command handlers in `src/cli/commands/project.rs`
+- [x] T014 [US3] Add `slug_id: String` field to `ProjectDto` struct in `src/cli/commands/project.rs`
+- [x] T015 [US3] Add `slug_id: p.slug_id.clone()` to `From<&Project> for ProjectDto` implementation in `src/cli/commands/project.rs`
+- [x] T016 [US3] Add `slug_id: String` field to `MutationResultDto` struct in `src/cli/commands/project.rs`
+- [x] T017 [US3] Add `slug_id: project.slug_id.clone()` to `MutationResultDto` construction in both `project create` and `project update` command handlers in `src/cli/commands/project.rs`
 
 **Checkpoint**: `cargo test` passes; `project list --json` and `project get --json` include `"slug_id"`; create/update JSON include `"slug_id"` per contracts
 
@@ -99,9 +99,9 @@
 
 **Purpose**: Final validation across all user stories per quickstart.md verification steps
 
-- [ ] T018 [P] Run `cargo test` and confirm all tests pass (T002–T013 all green)
-- [ ] T019 [P] Run `cargo clippy -- -D warnings` and resolve any new warnings in `src/cli/commands/project.rs`
-- [ ] T020 [P] Run `cargo fmt --check` and apply `cargo fmt` if formatting drift exists
+- [x] T018 [P] Run `cargo test` and confirm all tests pass (T002–T013 all green)
+- [x] T019 [P] Run `cargo clippy -- -D warnings` and resolve any new warnings in `src/cli/commands/project.rs`
+- [x] T020 [P] Run `cargo fmt --check` and apply `cargo fmt` if formatting drift exists
 - [ ] T021 Manually verify all four command outputs match `specs/005-improve-project-list/contracts/project-commands.md` (list, get, create, update — both human and JSON)
 
 ---

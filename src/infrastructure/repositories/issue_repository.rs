@@ -11,16 +11,17 @@ use crate::{
         errors::DomainError,
         repositories::issue_repository::IssueRepository,
         value_objects::{
-            LabelId, WorkflowStateRef,
-            issue_id::IssueId,
-            priority::Priority,
-            team_id::TeamId,
+            LabelId, WorkflowStateRef, issue_id::IssueId, priority::Priority, team_id::TeamId,
             user_id::UserId,
         },
     },
     infrastructure::graphql::{
-        mutations::issue_mutations::{IssueCreateInput, IssueUpdateInput, create_issue, update_issue},
-        queries::issue_queries::{IssueDetailNode, IssueNode, fetch_issue, fetch_issues, fetch_workflow_states},
+        mutations::issue_mutations::{
+            IssueCreateInput, IssueUpdateInput, create_issue, update_issue,
+        },
+        queries::issue_queries::{
+            IssueDetailNode, IssueNode, fetch_issue, fetch_issues, fetch_workflow_states,
+        },
     },
 };
 
@@ -31,13 +32,20 @@ pub struct LinearIssueRepository {
 
 impl LinearIssueRepository {
     pub fn new(api_key: String) -> Self {
-        Self { http: Client::new(), api_key }
+        Self {
+            http: Client::new(),
+            api_key,
+        }
     }
 }
 
 fn is_display_id(s: &str) -> bool {
     let mut chars = s.chars();
-    let has_upper = chars.by_ref().take_while(|c| c.is_ascii_uppercase() || *c == '-').count() > 0;
+    let has_upper = chars
+        .by_ref()
+        .take_while(|c| c.is_ascii_uppercase() || *c == '-')
+        .count()
+        > 0;
     if !has_upper {
         return false;
     }
@@ -124,9 +132,11 @@ fn node_to_issue_detail(node: IssueDetailNode) -> Result<Issue, DomainError> {
         .nodes
         .into_iter()
         .filter_map(|c| {
-            IssueId::new(c.id.into_inner())
-                .ok()
-                .map(|id| SubIssueRef { id, title: c.title, identifier: c.identifier })
+            IssueId::new(c.id.into_inner()).ok().map(|id| SubIssueRef {
+                id,
+                title: c.title,
+                identifier: c.identifier,
+            })
         })
         .collect();
 
@@ -223,7 +233,9 @@ impl IssueRepository for LinearIssueRepository {
         let parent_id = if input.no_parent {
             Some(serde_json::Value::Null) // explicit null detaches the parent
         } else {
-            input.parent_id.map(|p| serde_json::Value::String(p.to_string()))
+            input
+                .parent_id
+                .map(|p| serde_json::Value::String(p.to_string()))
         };
         let cynic_input = IssueUpdateInput {
             title: input.title,

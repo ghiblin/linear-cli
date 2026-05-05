@@ -3,10 +3,8 @@ use std::sync::Arc;
 use tracing::instrument;
 
 use crate::domain::{
-    entities::project::Project,
-    errors::DomainError,
-    repositories::project_repository::ProjectRepository,
-    value_objects::ProjectId,
+    entities::project::Project, errors::DomainError,
+    repositories::project_repository::ProjectRepository, value_objects::ProjectId,
 };
 
 pub struct GetProject {

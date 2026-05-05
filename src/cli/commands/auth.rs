@@ -32,7 +32,11 @@ pub struct AuthCommand {
 pub enum AuthSubcommand {
     #[command(about = "Store a Linear API key after remote validation")]
     Login {
-        #[arg(long, value_name = "KEY", help = "API key (reads from stdin if omitted)")]
+        #[arg(
+            long,
+            value_name = "KEY",
+            help = "API key (reads from stdin if omitted)"
+        )]
         api_key: Option<String>,
         #[arg(
             long,
@@ -61,7 +65,10 @@ struct WorkspaceOutput {
 
 pub async fn run_auth(cmd: &AuthCommand, force_json: bool) -> Result<(), ApplicationError> {
     match &cmd.subcommand {
-        AuthSubcommand::Login { api_key, store_file } => run_login(api_key.as_deref(), store_file.as_deref(), force_json).await,
+        AuthSubcommand::Login {
+            api_key,
+            store_file,
+        } => run_login(api_key.as_deref(), store_file.as_deref(), force_json).await,
         AuthSubcommand::Status => run_status(force_json).await,
         AuthSubcommand::Logout { dry_run } => run_logout(*dry_run, force_json).await,
     }
@@ -88,9 +95,14 @@ fn make_store(
     }
 }
 
-async fn run_login(api_key_arg: Option<&str>, store_file: Option<&str>, force_json: bool) -> Result<(), ApplicationError> {
+async fn run_login(
+    api_key_arg: Option<&str>,
+    store_file: Option<&str>,
+    force_json: bool,
+) -> Result<(), ApplicationError> {
     let api_key = match api_key_arg {
-        Some(raw) => ApiKey::new(raw).map_err(|e| ApplicationError::Auth(AuthError::ValidationFailed(e.to_string())))?,
+        Some(raw) => ApiKey::new(raw)
+            .map_err(|e| ApplicationError::Auth(AuthError::ValidationFailed(e.to_string())))?,
         None => read_api_key(force_json)?,
     };
     let (check_store, storage_kind, storage_path) = make_store(store_file);

@@ -251,7 +251,9 @@ pub async fn resolve_slug_to_uuid(
 ) -> Result<String, crate::domain::errors::DomainError> {
     let op = SlugLookupQuery::build(SlugLookupVariables {
         filter: ProjectFilter {
-            slug_id: Some(StringComparator { eq: Some(slug.to_string()) }),
+            slug_id: Some(StringComparator {
+                eq: Some(slug.to_string()),
+            }),
         },
     });
     let resp: GraphqlResponse<SlugLookupQuery> =
@@ -320,7 +322,7 @@ pub async fn fetch_status_id_for_type(
             return Err(crate::domain::errors::DomainError::InvalidInput(format!(
                 "unknown project status type: '{}'",
                 other
-            )))
+            )));
         }
     };
     let op = OrgStatusQuery::build(());
@@ -426,8 +428,8 @@ async fn try_execute<V: Serialize, T: for<'de> serde::Deserialize<'de>>(
 ) -> Result<GraphqlResponse<T>, crate::domain::errors::DomainError> {
     let body = GraphqlRequest { query, variables };
     if tracing::enabled!(tracing::Level::DEBUG) {
-        let req_json = serde_json::to_string(&body)
-            .unwrap_or_else(|_| "<serialization error>".to_string());
+        let req_json =
+            serde_json::to_string(&body).unwrap_or_else(|_| "<serialization error>".to_string());
         tracing::debug!(request = %req_json, "GraphQL request");
     }
     let response = client
