@@ -87,6 +87,11 @@ pub struct IssueFilterInput {
     pub priority: Option<NullableNumberComparatorInput>,
     pub labels: Option<LabelCollectionFilterInput>,
     pub id: Option<IssueIdComparatorInput>,
+    /// Compound filters — all conditions must match (AND semantics).
+    /// Used to require that an issue carries every label when multiple --label
+    /// flags are supplied (FR-002: "issues must carry ALL specified labels").
+    /// Box breaks the recursive type size cycle required by Rust.
+    pub and: Option<Vec<Box<IssueFilterInput>>>,
 }
 
 // ---- Fragment types ----
@@ -196,6 +201,7 @@ pub struct IssueConnection {
 #[derive(cynic::QueryFragment, Debug, Clone)]
 #[cynic(graphql_type = "IssueConnection")]
 pub struct IssueDetailConnection {
+    #[allow(dead_code)]
     pub nodes: Vec<IssueDetailNode>,
     #[allow(dead_code)]
     pub page_info: PageInfoNode,
@@ -241,6 +247,7 @@ pub struct GetIssueByIdentifierVariables {
 #[derive(cynic::QueryFragment, Debug)]
 #[cynic(graphql_type = "Query", variables = "GetIssueByIdentifierVariables")]
 pub struct GetIssueByIdentifierQuery {
+    #[allow(dead_code)]
     #[arguments(filter: $filter, first: 1)]
     pub issues: IssueDetailConnection,
 }
@@ -306,7 +313,13 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
         let pv = *p as u8;
         NullableNumberComparatorInput { eq: Some(pv as f64) }
     });
-    let labels = input.label_ids.first().map(|l| LabelCollectionFilterInput {
+    // Build per-label sub-filters. FR-002 requires AND semantics: an issue must
+    // carry ALL specified labels. Linear's IssueFilter.and field chains filters
+    // such that every element must match, giving us the required AND logic.
+    // The first label goes into the top-level `labels` field; each additional
+    // label is expressed as a separate IssueFilterInput placed in `and`.
+    let mut label_iter = input.label_ids.iter();
+    let labels = label_iter.next().map(|l| LabelCollectionFilterInput {
         some: Some(IssueLabelFilterInput {
             id: Some(IdComparatorInput {
                 eq: Some(cynic::Id::new(l.to_string())),
@@ -314,6 +327,30 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
             }),
         }),
     });
+    let extra_label_filters: Vec<Box<IssueFilterInput>> = label_iter
+        .map(|l| Box::new(IssueFilterInput {
+            labels: Some(LabelCollectionFilterInput {
+                some: Some(IssueLabelFilterInput {
+                    id: Some(IdComparatorInput {
+                        eq: Some(cynic::Id::new(l.to_string())),
+                        in_list: None,
+                    }),
+                }),
+            }),
+            team: None,
+            project: None,
+            state: None,
+            assignee: None,
+            priority: None,
+            id: None,
+            and: None,
+        }))
+        .collect();
+    let and = if extra_label_filters.is_empty() {
+        None
+    } else {
+        Some(extra_label_filters)
+    };
 
     if team.is_none()
         && project.is_none()
@@ -333,6 +370,7 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
         priority,
         labels,
         id: None,
+        and,
     })
 }
 
@@ -363,48 +401,19 @@ pub async fn fetch_issue(
     client: &reqwest::Client,
     api_key: &str,
     id: &str,
-    is_display_id: bool,
+    _is_display_id: bool,
 ) -> Result<IssueDetailNode, DomainError> {
-    if is_display_id {
-        let filter = IssueFilterInput {
-            id: Some(IssueIdComparatorInput {
-                eq: Some(cynic::Id::new(id.to_string())),
-            }),
-            team: None,
-            project: None,
-            state: None,
-            assignee: None,
-            priority: None,
-            labels: None,
-        };
-        let op = GetIssueByIdentifierQuery::build(GetIssueByIdentifierVariables { filter });
-        let resp: GraphqlResponse<GetIssueByIdentifierQuery> =
-            execute_with_retry(client, api_key, &op.query, op.variables).await?;
-        if let Some(errors) = resp.errors {
-            return Err(map_errors(errors));
-        }
-        resp.data
-            .ok_or_else(|| {
-                DomainError::InvalidInput("empty response from Linear API".to_string())
-            })?
-            .issues
-            .nodes
-            .into_iter()
-            .next()
-            .ok_or_else(|| DomainError::NotFound(id.to_string()))
-    } else {
-        let op = GetIssueByIdQuery::build(GetIssueByIdVariables { id: id.to_string() });
-        let resp: GraphqlResponse<GetIssueByIdQuery> =
-            execute_with_retry(client, api_key, &op.query, op.variables).await?;
-        if let Some(errors) = resp.errors {
-            return Err(map_errors(errors));
-        }
-        resp.data
-            .ok_or_else(|| {
-                DomainError::InvalidInput("empty response from Linear API".to_string())
-            })
-            .map(|d| d.issue)
+    // The Linear `issue(id: String!)` root query accepts both UUIDs and
+    // display identifiers (e.g. "ENG-123"), so a single path handles both.
+    let op = GetIssueByIdQuery::build(GetIssueByIdVariables { id: id.to_string() });
+    let resp: GraphqlResponse<GetIssueByIdQuery> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
+    if let Some(errors) = resp.errors {
+        return Err(map_errors(errors));
     }
+    resp.data
+        .ok_or_else(|| DomainError::InvalidInput("empty response from Linear API".to_string()))
+        .map(|d| d.issue)
 }
 
 pub async fn fetch_workflow_states(

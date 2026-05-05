@@ -282,6 +282,13 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
     use crate::application::use_cases::resolve_auth::resolve_auth;
     use crate::domain::repositories::credential_store::CredentialStore;
 
+    if let IssueSubcommand::Update { parent, no_parent, .. } = &cmd.subcommand {
+        if parent.is_some() && *no_parent {
+            eprintln!("Error: --parent and --no-parent are mutually exclusive");
+            std::process::exit(1);
+        }
+    }
+
     let env_key = std::env::var("LINEAR_API_KEY")
         .ok()
         .and_then(|k| ApiKey::new(k).ok());

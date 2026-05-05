@@ -221,9 +221,9 @@ impl IssueRepository for LinearIssueRepository {
     #[instrument(skip(self))]
     async fn update(&self, id: IssueId, input: UpdateIssueInput) -> Result<Issue, DomainError> {
         let parent_id = if input.no_parent {
-            Some(String::new()) // empty string signals parent removal; best-effort
+            Some(serde_json::Value::Null) // explicit null detaches the parent
         } else {
-            input.parent_id.map(|p| p.to_string())
+            input.parent_id.map(|p| serde_json::Value::String(p.to_string()))
         };
         let cynic_input = IssueUpdateInput {
             title: input.title,
