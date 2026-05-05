@@ -12,82 +12,101 @@ use crate::domain::{entities::issue::ListIssuesInput, errors::DomainError};
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "IDComparator")]
 pub struct IdComparatorInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub eq: Option<cynic::Id>,
-    #[cynic(rename = "in")]
+    #[cynic(rename = "in", skip_serializing_if = "Option::is_none")]
     pub in_list: Option<Vec<cynic::Id>>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "IssueIDComparator")]
 pub struct IssueIdComparatorInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub eq: Option<cynic::Id>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "StringComparator")]
 pub struct StringComparatorInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub eq: Option<String>,
-    #[cynic(rename = "eqIgnoreCase")]
+    #[cynic(rename = "eqIgnoreCase", skip_serializing_if = "Option::is_none")]
     pub eq_ignore_case: Option<String>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "NullableNumberComparator")]
 pub struct NullableNumberComparatorInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub eq: Option<f64>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "TeamFilter")]
 pub struct TeamFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub id: Option<IdComparatorInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "NullableProjectFilter")]
 pub struct ProjectFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub id: Option<IdComparatorInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "WorkflowStateFilter")]
 pub struct StateFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub name: Option<StringComparatorInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub team: Option<TeamFilterInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "NullableUserFilter")]
 pub struct AssigneeFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub id: Option<IdComparatorInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "IssueLabelFilter")]
 pub struct IssueLabelFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub id: Option<IdComparatorInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "IssueLabelCollectionFilter")]
 pub struct LabelCollectionFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub some: Option<IssueLabelFilterInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "IssueFilter")]
 pub struct IssueFilterInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub team: Option<TeamFilterInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub project: Option<ProjectFilterInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub state: Option<StateFilterInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub assignee: Option<AssigneeFilterInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub priority: Option<NullableNumberComparatorInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub labels: Option<LabelCollectionFilterInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub id: Option<IssueIdComparatorInput>,
     /// Compound filters — all conditions must match (AND semantics).
     /// Used to require that an issue carries every label when multiple --label
     /// flags are supplied (FR-002: "issues must carry ALL specified labels").
     /// Box breaks the recursive type size cycle required by Rust.
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub and: Option<Vec<Box<IssueFilterInput>>>,
 }
 

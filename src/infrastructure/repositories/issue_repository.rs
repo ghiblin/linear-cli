@@ -11,16 +11,17 @@ use crate::{
         errors::DomainError,
         repositories::issue_repository::IssueRepository,
         value_objects::{
-            LabelId, WorkflowStateRef, issue_id::IssueId, priority::Priority, team_id::TeamId,
-            user_id::UserId,
+            LabelId, WorkflowStateRef, issue_id::IssueId, priority::Priority,
+            project_id::ProjectId, team_id::TeamId, user_id::UserId,
         },
     },
     infrastructure::graphql::{
         mutations::issue_mutations::{
             IssueCreateInput, IssueUpdateInput, create_issue, update_issue,
         },
-        queries::issue_queries::{
-            IssueDetailNode, IssueNode, fetch_issue, fetch_issues, fetch_workflow_states,
+        queries::{
+            issue_queries::{IssueDetailNode, IssueNode, fetch_issue, fetch_issues, fetch_workflow_states},
+            project_queries::resolve_slug_to_uuid,
         },
     },
 };
@@ -165,6 +166,16 @@ fn node_to_issue_detail(node: IssueDetailNode) -> Result<Issue, DomainError> {
 impl IssueRepository for LinearIssueRepository {
     #[instrument(skip(self))]
     async fn list(&self, input: ListIssuesInput) -> Result<ListIssuesResult, DomainError> {
+        let input = match input.project_id {
+            Some(ProjectId::Slug(ref slug)) => {
+                let uuid = resolve_slug_to_uuid(&self.http, &self.api_key, slug).await?;
+                ListIssuesInput {
+                    project_id: Some(ProjectId::Uuid(uuid)),
+                    ..input
+                }
+            }
+            _ => input,
+        };
         if input.all_pages {
             let mut all_items = Vec::new();
             let mut cursor: Option<String> = input.cursor.clone();
