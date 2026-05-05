@@ -1,8 +1,10 @@
+use tracing::instrument;
+
 use crate::{
     application::errors::ApplicationError,
     domain::{
-        entities::issue::Issue, repositories::issue_repository::IssueRepository,
-        value_objects::team_id::TeamId,
+        entities::issue::{ListIssuesInput, ListIssuesResult},
+        repositories::issue_repository::IssueRepository,
     },
 };
 
@@ -15,9 +17,9 @@ impl ListIssues {
         Self { repo }
     }
 
-    pub async fn execute(&self, team_id: Option<TeamId>) -> Result<Vec<Issue>, ApplicationError> {
-        let id = team_id.unwrap_or_else(|| TeamId::new("default".to_string()).unwrap());
-        Ok(self.repo.list(id).await?)
+    #[instrument(skip(self))]
+    pub async fn execute(&self, input: ListIssuesInput) -> Result<ListIssuesResult, ApplicationError> {
+        Ok(self.repo.list(input).await?)
     }
 }
 
@@ -25,7 +27,10 @@ impl ListIssues {
 mod tests {
     use super::*;
     use crate::domain::{
-        entities::issue::Issue,
+        entities::issue::{
+            CreateIssueInput, Issue, ListIssuesInput, ListIssuesResult, UpdateIssueInput,
+            WorkflowStateInfo,
+        },
         errors::DomainError,
         value_objects::{issue_id::IssueId, team_id::TeamId},
     };
@@ -35,20 +40,38 @@ mod tests {
 
         #[async_trait::async_trait]
         impl IssueRepository for IssueRepo {
-            async fn list(&self, team_id: TeamId) -> Result<Vec<Issue>, DomainError>;
+            async fn list(&self, input: ListIssuesInput) -> Result<ListIssuesResult, DomainError>;
             async fn get(&self, id: IssueId) -> Result<Issue, DomainError>;
+            async fn create(&self, input: CreateIssueInput) -> Result<Issue, DomainError>;
+            async fn update(&self, id: IssueId, input: UpdateIssueInput) -> Result<Issue, DomainError>;
+            async fn list_workflow_states(&self, team_id: TeamId) -> Result<Vec<WorkflowStateInfo>, DomainError>;
+        }
+    }
+
+    fn default_input() -> ListIssuesInput {
+        ListIssuesInput {
+            team_id: None,
+            project_id: None,
+            state_name: None,
+            assignee_id: None,
+            priority: None,
+            label_ids: vec![],
+            limit: 50,
+            cursor: None,
+            all_pages: false,
         }
     }
 
     #[tokio::test]
-    async fn returns_empty_vec_when_repo_returns_empty() {
+    async fn returns_empty_result_when_repo_returns_empty() {
         let mut mock = MockIssueRepo::new();
-        mock.expect_list().returning(|_| Ok(vec![]));
+        mock.expect_list().returning(|_| {
+            Ok(ListIssuesResult { items: vec![], next_cursor: None, has_next_page: false })
+        });
 
         let use_case = ListIssues::new(Box::new(mock));
-        let team_id = TeamId::new("team-1".to_string()).unwrap();
-        let result = use_case.execute(Some(team_id)).await.unwrap();
-        assert!(result.is_empty());
+        let result = use_case.execute(default_input()).await.unwrap();
+        assert!(result.items.is_empty());
     }
 
     #[tokio::test]
@@ -58,8 +81,7 @@ mod tests {
             .returning(|_| Err(DomainError::NotImplemented));
 
         let use_case = ListIssues::new(Box::new(mock));
-        let team_id = TeamId::new("team-1".to_string()).unwrap();
-        let result = use_case.execute(Some(team_id)).await;
+        let result = use_case.execute(default_input()).await;
         assert!(result.is_err());
     }
 }

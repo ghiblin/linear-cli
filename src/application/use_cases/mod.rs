@@ -1,4 +1,7 @@
 pub mod archive_project;
+pub mod create_issue;
+pub mod get_issue;
+pub mod update_issue;
 pub mod auth_status;
 pub mod create_project;
 pub mod get_project;

@@ -59,9 +59,7 @@ pub struct ListArgs {
     pub all: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Print step-by-step progress to stderr")]
-    pub verbose: bool,
-    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
+    #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
 
@@ -71,9 +69,7 @@ pub struct GetArgs {
     pub id: String,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Print step-by-step progress to stderr")]
-    pub verbose: bool,
-    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
+    #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
 
@@ -95,9 +91,7 @@ pub struct CreateArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Print step-by-step progress to stderr")]
-    pub verbose: bool,
-    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
+    #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
 
@@ -121,9 +115,7 @@ pub struct UpdateArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Print step-by-step progress to stderr")]
-    pub verbose: bool,
-    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
+    #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
 
@@ -135,24 +127,22 @@ pub struct ArchiveArgs {
     pub dry_run: bool,
     #[arg(long = "output", value_name = "FORMAT", help = "Output format: json or human")]
     pub output: Option<String>,
-    #[arg(long, help = "Print step-by-step progress to stderr")]
-    pub verbose: bool,
-    #[arg(long, help = "Print debug info to stderr (implies --verbose)")]
+    #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
 
 impl ProjectCommand {
     /// Returns the effective verbosity level from per-subcommand flags:
-    /// 2 = --debug (DEBUG tracing), 1 = --verbose (INFO tracing), 0 = default.
+    /// 2 = --debug (DEBUG tracing), 0 = default.
     pub fn verbosity(&self) -> u8 {
-        let (verbose, debug) = match &self.subcommand {
-            ProjectSubcommand::List(a) => (a.verbose, a.debug),
-            ProjectSubcommand::Get(a) => (a.verbose, a.debug),
-            ProjectSubcommand::Create(a) => (a.verbose, a.debug),
-            ProjectSubcommand::Update(a) => (a.verbose, a.debug),
-            ProjectSubcommand::Archive(a) => (a.verbose, a.debug),
+        let debug = match &self.subcommand {
+            ProjectSubcommand::List(a) => a.debug,
+            ProjectSubcommand::Get(a) => a.debug,
+            ProjectSubcommand::Create(a) => a.debug,
+            ProjectSubcommand::Update(a) => a.debug,
+            ProjectSubcommand::Archive(a) => a.debug,
         };
-        if debug { 2 } else if verbose { 1 } else { 0 }
+        if debug { 2 } else { 0 }
     }
 }
 
@@ -268,7 +258,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
     match &cmd.subcommand {
         ProjectSubcommand::List(args) => {
-            let verbose = args.verbose || args.debug;
+            let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let uc = ListProjects::new(repo);
             let team_id = args
@@ -309,7 +299,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Get(args) => {
-            let verbose = args.verbose || args.debug;
+            let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let id = ProjectId::parse(&args.id).map_err(|e| {
                 eprintln!("error: {}", e);
@@ -353,7 +343,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Create(args) => {
-            let verbose = args.verbose || args.debug;
+            let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let start_date = args
                 .start_date
@@ -421,7 +411,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Update(args) => {
-            let verbose = args.verbose || args.debug;
+            let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
 
             let state = args
@@ -503,7 +493,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
         }
 
         ProjectSubcommand::Archive(args) => {
-            let verbose = args.verbose || args.debug;
+            let verbose = args.debug;
             let use_json = force_json || args.output.as_deref() == Some("json");
             let id_str = args.id.clone();
             let id = ProjectId::parse(&id_str).map_err(|e| {
@@ -561,29 +551,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn list_args_has_verbose_and_debug_flags() {
+    fn list_args_has_debug_flag() {
         let args = ListArgs {
             team: None,
             limit: 50,
             cursor: None,
             all: false,
             output: None,
-            verbose: false,
             debug: false,
         };
-        assert!(!args.verbose);
         assert!(!args.debug);
     }
 
     #[test]
-    fn get_args_has_verbose_and_debug_flags() {
-        let args = GetArgs { id: "id".into(), output: None, verbose: false, debug: false };
-        assert!(!args.verbose);
+    fn get_args_has_debug_flag() {
+        let args = GetArgs { id: "id".into(), output: None, debug: false };
         assert!(!args.debug);
     }
 
     #[test]
-    fn create_args_has_verbose_and_debug_flags() {
+    fn create_args_has_debug_flag() {
         let args = CreateArgs {
             name: "n".into(),
             teams: vec![],
@@ -593,15 +580,13 @@ mod tests {
             target_date: None,
             dry_run: false,
             output: None,
-            verbose: false,
             debug: false,
         };
-        assert!(!args.verbose);
         assert!(!args.debug);
     }
 
     #[test]
-    fn update_args_has_verbose_and_debug_flags() {
+    fn update_args_has_debug_flag() {
         let args = UpdateArgs {
             id: "id".into(),
             name: None,
@@ -612,17 +597,14 @@ mod tests {
             target_date: None,
             dry_run: false,
             output: None,
-            verbose: false,
             debug: false,
         };
-        assert!(!args.verbose);
         assert!(!args.debug);
     }
 
     #[test]
-    fn archive_args_has_verbose_and_debug_flags() {
-        let args = ArchiveArgs { id: "id".into(), dry_run: false, output: None, verbose: false, debug: false };
-        assert!(!args.verbose);
+    fn archive_args_has_debug_flag() {
+        let args = ArchiveArgs { id: "id".into(), dry_run: false, output: None, debug: false };
         assert!(!args.debug);
     }
 }
