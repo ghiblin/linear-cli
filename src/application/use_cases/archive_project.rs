@@ -3,8 +3,7 @@ use std::sync::Arc;
 use tracing::instrument;
 
 use crate::domain::{
-    errors::DomainError,
-    repositories::project_repository::ProjectRepository,
+    errors::DomainError, repositories::project_repository::ProjectRepository,
     value_objects::ProjectId,
 };
 
@@ -23,7 +22,11 @@ impl ArchiveProject {
     }
 
     #[instrument(skip(self))]
-    pub async fn execute(&self, id: ProjectId, dry_run: bool) -> Result<ArchiveOutcome, DomainError> {
+    pub async fn execute(
+        &self,
+        id: ProjectId,
+        dry_run: bool,
+    ) -> Result<ArchiveOutcome, DomainError> {
         if dry_run {
             return Ok(ArchiveOutcome::Archived);
         }
@@ -74,9 +77,7 @@ mod tests {
     async fn dry_run_returns_ok_without_api_call() {
         let mock = MockTestRepo::new();
         let uc = ArchiveProject::new(Arc::new(mock));
-        let result = uc
-            .execute(ProjectId::parse("uuid-1").unwrap(), true)
-            .await;
+        let result = uc.execute(ProjectId::parse("uuid-1").unwrap(), true).await;
         assert!(result.is_ok());
     }
 
@@ -85,9 +86,7 @@ mod tests {
         let mut mock = MockTestRepo::new();
         mock.expect_archive().times(1).returning(|_| Ok(()));
         let uc = ArchiveProject::new(Arc::new(mock));
-        let result = uc
-            .execute(ProjectId::parse("uuid-1").unwrap(), false)
-            .await;
+        let result = uc.execute(ProjectId::parse("uuid-1").unwrap(), false).await;
         assert!(result.is_ok());
     }
 
@@ -98,9 +97,7 @@ mod tests {
             .times(1)
             .returning(|_| Err(DomainError::NotFound("uuid-1".to_string())));
         let uc = ArchiveProject::new(Arc::new(mock));
-        let result = uc
-            .execute(ProjectId::parse("uuid-1").unwrap(), false)
-            .await;
+        let result = uc.execute(ProjectId::parse("uuid-1").unwrap(), false).await;
         assert!(matches!(result, Err(DomainError::NotFound(_))));
     }
 
@@ -109,13 +106,13 @@ mod tests {
         // The repo must signal already-archived via NotFound("...archived...").
         // The mutation layer is responsible for mapping success==false to this error.
         let mut mock = MockTestRepo::new();
-        mock.expect_archive()
-            .times(1)
-            .returning(|_| Err(DomainError::NotFound("project is already archived".to_string())));
+        mock.expect_archive().times(1).returning(|_| {
+            Err(DomainError::NotFound(
+                "project is already archived".to_string(),
+            ))
+        });
         let uc = ArchiveProject::new(Arc::new(mock));
-        let result = uc
-            .execute(ProjectId::parse("uuid-1").unwrap(), false)
-            .await;
+        let result = uc.execute(ProjectId::parse("uuid-1").unwrap(), false).await;
         assert!(matches!(result, Ok(ArchiveOutcome::AlreadyArchived)));
     }
 }

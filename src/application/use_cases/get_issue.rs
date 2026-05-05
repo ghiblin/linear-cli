@@ -3,10 +3,8 @@ use tracing::instrument;
 use crate::{
     application::errors::ApplicationError,
     domain::{
-        entities::issue::Issue,
-        errors::DomainError,
-        repositories::issue_repository::IssueRepository,
-        value_objects::issue_id::IssueId,
+        entities::issue::Issue, errors::DomainError,
+        repositories::issue_repository::IssueRepository, value_objects::issue_id::IssueId,
     },
 };
 
@@ -21,8 +19,8 @@ impl GetIssue {
 
     #[instrument(skip(self))]
     pub async fn execute(&self, id: String) -> Result<Issue, ApplicationError> {
-        let issue_id =
-            IssueId::new(id).map_err(|e| ApplicationError::Domain(DomainError::InvalidInput(e.to_string())))?;
+        let issue_id = IssueId::new(id)
+            .map_err(|e| ApplicationError::Domain(DomainError::InvalidInput(e.to_string())))?;
         Ok(self.repo.get(issue_id).await?)
     }
 }

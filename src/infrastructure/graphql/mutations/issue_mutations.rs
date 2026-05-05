@@ -2,10 +2,10 @@ use crate::infrastructure::graphql::schema::schema;
 use cynic::MutationBuilder;
 use serde::Serialize;
 
+use crate::infrastructure::graphql::queries::issue_queries::IssueDetailNode;
 use crate::infrastructure::graphql::queries::project_queries::{
     GraphqlResponse, execute_with_retry, map_errors,
 };
-use crate::infrastructure::graphql::queries::issue_queries::IssueDetailNode;
 
 // ---- Create ----
 
@@ -168,7 +168,10 @@ pub async fn update_issue(
         });
         op.query
     };
-    let variables = IssueUpdateVariables { id: id.to_string(), input };
+    let variables = IssueUpdateVariables {
+        id: id.to_string(),
+        input,
+    };
     let resp: GraphqlResponse<IssueUpdateMutation> =
         execute_with_retry(client, api_key, &query_string, variables).await?;
     if let Some(errors) = resp.errors {

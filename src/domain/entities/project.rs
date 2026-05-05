@@ -106,7 +106,11 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    fn make_project(name: &str, team_ids: Vec<TeamId>, progress: f64) -> Result<Project, DomainError> {
+    fn make_project(
+        name: &str,
+        team_ids: Vec<TeamId>,
+        progress: f64,
+    ) -> Result<Project, DomainError> {
         Project::new(
             "some-uuid".to_string(),
             name.to_string(),
@@ -124,19 +128,30 @@ mod tests {
 
     #[test]
     fn rejects_empty_name() {
-        let err = make_project("", vec![TeamId::new("team-1".to_string()).unwrap()], 0.0).unwrap_err();
+        let err =
+            make_project("", vec![TeamId::new("team-1".to_string()).unwrap()], 0.0).unwrap_err();
         assert!(err.to_string().contains("name"));
     }
 
     #[test]
     fn rejects_invalid_progress() {
-        let err = make_project("Valid", vec![TeamId::new("team-1".to_string()).unwrap()], 101.0).unwrap_err();
+        let err = make_project(
+            "Valid",
+            vec![TeamId::new("team-1".to_string()).unwrap()],
+            101.0,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("progress"));
     }
 
     #[test]
     fn accepts_valid_project() {
-        let p = make_project("My Project", vec![TeamId::new("team-1".to_string()).unwrap()], 50.0).unwrap();
+        let p = make_project(
+            "My Project",
+            vec![TeamId::new("team-1".to_string()).unwrap()],
+            50.0,
+        )
+        .unwrap();
         assert_eq!(p.name, "My Project");
         assert_eq!(p.progress, 50.0);
     }

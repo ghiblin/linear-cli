@@ -18,7 +18,10 @@ impl ListIssues {
     }
 
     #[instrument(skip(self))]
-    pub async fn execute(&self, input: ListIssuesInput) -> Result<ListIssuesResult, ApplicationError> {
+    pub async fn execute(
+        &self,
+        input: ListIssuesInput,
+    ) -> Result<ListIssuesResult, ApplicationError> {
         Ok(self.repo.list(input).await?)
     }
 }
@@ -66,7 +69,11 @@ mod tests {
     async fn returns_empty_result_when_repo_returns_empty() {
         let mut mock = MockIssueRepo::new();
         mock.expect_list().returning(|_| {
-            Ok(ListIssuesResult { items: vec![], next_cursor: None, has_next_page: false })
+            Ok(ListIssuesResult {
+                items: vec![],
+                next_cursor: None,
+                has_next_page: false,
+            })
         });
 
         let use_case = ListIssues::new(Box::new(mock));

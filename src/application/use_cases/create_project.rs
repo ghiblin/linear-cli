@@ -57,10 +57,7 @@ impl CreateProject {
             .map(|s| TeamId::new(s.clone()))
             .collect::<Result<_, _>>()?;
 
-        let lead_id = args
-            .lead_id
-            .map(UserId::new)
-            .transpose()?;
+        let lead_id = args.lead_id.map(UserId::new).transpose()?;
 
         let input = CreateProjectInput {
             name: args.name,

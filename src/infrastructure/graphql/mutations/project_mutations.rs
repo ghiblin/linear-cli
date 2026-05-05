@@ -130,8 +130,10 @@ pub async fn update_project(
     id: &str,
     input: ProjectUpdateInput,
 ) -> Result<ProjectNode, crate::domain::errors::DomainError> {
-    let op =
-        ProjectUpdateMutation::build(ProjectUpdateVariables { id: id.to_string(), input });
+    let op = ProjectUpdateMutation::build(ProjectUpdateVariables {
+        id: id.to_string(),
+        input,
+    });
     let resp: GraphqlResponse<ProjectUpdateMutation> =
         execute_with_retry(client, api_key, &op.query, op.variables).await?;
     if let Some(errors) = resp.errors {
