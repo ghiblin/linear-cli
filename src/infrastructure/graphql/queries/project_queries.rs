@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::infrastructure::graphql::schema::schema;
 use cynic::QueryBuilder;
 use serde::{Deserialize, Serialize};
@@ -28,8 +26,8 @@ pub struct GraphqlError {
 pub struct GraphqlErrorExtension {
     #[serde(rename = "type")]
     pub error_type: Option<String>,
-    #[serde(rename = "validationErrors", default)]
-    pub validation_errors: HashMap<String, Vec<String>>,
+    #[serde(rename = "validationErrors")]
+    pub validation_errors: Option<serde_json::Value>,
 }
 
 impl GraphqlError {
@@ -356,6 +354,17 @@ pub async fn fetch_status_id_for_type(
 
 // ---- Shared helpers ----
 
+fn format_validation_errors(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::Object(map) => map
+            .iter()
+            .map(|(field, msgs)| format!("{}: {}", field, msgs))
+            .collect::<Vec<_>>()
+            .join(", "),
+        other => other.to_string(),
+    }
+}
+
 pub fn map_errors(errors: Vec<GraphqlError>) -> crate::domain::errors::DomainError {
     if let Some(first) = errors.first() {
         if first.is_rate_limited() {
@@ -379,16 +388,11 @@ pub fn map_errors(errors: Vec<GraphqlError>) -> crate::domain::errors::DomainErr
         }
         // Enrich argument validation errors with per-field detail from extensions.
         if let Some(ext) = &first.extensions {
-            if !ext.validation_errors.is_empty() {
-                let detail: Vec<String> = ext
-                    .validation_errors
-                    .iter()
-                    .map(|(field, msgs)| format!("  {}: {}", field, msgs.join(", ")))
-                    .collect();
+            if let Some(ve) = &ext.validation_errors {
                 return crate::domain::errors::DomainError::InvalidInput(format!(
-                    "{}\n{}",
+                    "{}: {}",
                     first.message,
-                    detail.join("\n")
+                    format_validation_errors(ve)
                 ));
             }
         }
