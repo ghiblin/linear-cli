@@ -179,9 +179,15 @@ impl IssueRepository for LinearIssueRepository {
         if input.all_pages {
             let mut all_items = Vec::new();
             let mut cursor: Option<String> = input.cursor.clone();
+            // Use a large page size when fetching all pages; --limit controls per-page
+            // size in single-page mode only.
+            let paged_input = ListIssuesInput {
+                limit: 250,
+                ..input.clone()
+            };
             loop {
                 let (nodes, page_info) =
-                    fetch_issues(&self.http, &self.api_key, &input, cursor).await?;
+                    fetch_issues(&self.http, &self.api_key, &paged_input, cursor).await?;
                 for node in nodes {
                     all_items.push(node_to_issue_light(node)?);
                 }
@@ -192,7 +198,16 @@ impl IssueRepository for LinearIssueRepository {
                         has_next_page: false,
                     });
                 }
-                cursor = page_info.end_cursor;
+                match page_info.end_cursor {
+                    Some(c) => cursor = Some(c),
+                    None => {
+                        return Ok(ListIssuesResult {
+                            items: all_items,
+                            next_cursor: None,
+                            has_next_page: false,
+                        });
+                    }
+                }
             }
         } else {
             let (nodes, page_info) =
