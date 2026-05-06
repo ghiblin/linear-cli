@@ -20,7 +20,9 @@ use crate::{
             IssueCreateInput, IssueUpdateInput, create_issue, update_issue,
         },
         queries::{
-            issue_queries::{IssueDetailNode, IssueNode, fetch_issue, fetch_issues, fetch_workflow_states},
+            issue_queries::{
+                IssueDetailNode, IssueNode, fetch_issue, fetch_issues, fetch_workflow_states,
+            },
             project_queries::resolve_slug_to_uuid,
         },
     },
@@ -235,9 +237,7 @@ impl IssueRepository for LinearIssueRepository {
     #[instrument(skip(self))]
     async fn create(&self, input: CreateIssueInput) -> Result<Issue, DomainError> {
         let project_id_str = match &input.project_id {
-            ProjectId::Slug(slug) => {
-                resolve_slug_to_uuid(&self.http, &self.api_key, slug).await?
-            }
+            ProjectId::Slug(slug) => resolve_slug_to_uuid(&self.http, &self.api_key, slug).await?,
             ProjectId::Uuid(uuid) => uuid.clone(),
         };
         let cynic_input = IssueCreateInput {
