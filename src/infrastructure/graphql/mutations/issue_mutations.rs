@@ -14,13 +14,21 @@ use crate::infrastructure::graphql::queries::project_queries::{
 pub struct IssueCreateInput {
     pub title: String,
     pub team_id: String,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub priority: Option<i32>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub assignee_id: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub label_ids: Option<Vec<String>>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub due_date: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub estimate: Option<i32>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
 }
 
