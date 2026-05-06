@@ -234,10 +234,16 @@ impl IssueRepository for LinearIssueRepository {
 
     #[instrument(skip(self))]
     async fn create(&self, input: CreateIssueInput) -> Result<Issue, DomainError> {
+        let project_id_str = match &input.project_id {
+            ProjectId::Slug(slug) => {
+                resolve_slug_to_uuid(&self.http, &self.api_key, slug).await?
+            }
+            ProjectId::Uuid(uuid) => uuid.clone(),
+        };
         let cynic_input = IssueCreateInput {
             title: input.title,
             team_id: input.team_id.to_string(),
-            project_id: Some(input.project_id.to_string()),
+            project_id: Some(project_id_str),
             description: input.description,
             priority: input.priority.map(|p| p as u8 as i32),
             assignee_id: input.assignee_id.map(|a| a.to_string()),
