@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::infrastructure::graphql::schema::schema;
 use cynic::QueryBuilder;
 use serde::{Deserialize, Serialize};
@@ -26,6 +28,8 @@ pub struct GraphqlError {
 pub struct GraphqlErrorExtension {
     #[serde(rename = "type")]
     pub error_type: Option<String>,
+    #[serde(rename = "validationErrors", default)]
+    pub validation_errors: HashMap<String, Vec<String>>,
 }
 
 impl GraphqlError {
@@ -372,6 +376,21 @@ pub fn map_errors(errors: Vec<GraphqlError>) -> crate::domain::errors::DomainErr
         }
         if first.message.to_lowercase().contains("not found") {
             return crate::domain::errors::DomainError::NotFound(first.message.clone());
+        }
+        // Enrich argument validation errors with per-field detail from extensions.
+        if let Some(ext) = &first.extensions {
+            if !ext.validation_errors.is_empty() {
+                let detail: Vec<String> = ext
+                    .validation_errors
+                    .iter()
+                    .map(|(field, msgs)| format!("  {}: {}", field, msgs.join(", ")))
+                    .collect();
+                return crate::domain::errors::DomainError::InvalidInput(format!(
+                    "{}\n{}",
+                    first.message,
+                    detail.join("\n")
+                ));
+            }
         }
         return crate::domain::errors::DomainError::InvalidInput(first.message.clone());
     }
