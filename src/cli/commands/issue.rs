@@ -116,6 +116,30 @@ pub enum IssueSubcommand {
 // ---- DTOs for JSON output ----
 
 #[derive(Serialize)]
+struct UpdateDryRunDto {
+    dry_run: bool,
+    id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    state: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    assignee: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    estimate: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    no_parent: Option<bool>,
+}
+
+#[derive(Serialize)]
 struct WorkflowStateDto {
     id: String,
     name: String,
@@ -496,16 +520,37 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                 std::process::exit(1);
             }
 
+            let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
+
             if *dry_run {
-                println!("[dry-run] Would update {}:", id);
-                if let Some(t) = title {
-                    println!("  title:    → {}", t);
-                }
-                if let Some(s) = state {
-                    println!("  state:    → {}", s);
-                }
-                if let Some(p) = priority {
-                    println!("  priority: → {}", p);
+                if use_json {
+                    println!(
+                        "{}",
+                        format_json(&UpdateDryRunDto {
+                            dry_run: true,
+                            id: id.clone(),
+                            title: title.clone(),
+                            description: description.clone(),
+                            state: state.clone(),
+                            priority: priority.clone(),
+                            assignee: assignee.clone(),
+                            due_date: due_date.clone(),
+                            estimate: *estimate,
+                            parent: parent.clone(),
+                            no_parent: if *no_parent { Some(true) } else { None },
+                        })
+                    );
+                } else {
+                    println!("[dry-run] Would update {}:", id);
+                    if let Some(t) = title {
+                        println!("  title:    → {}", t);
+                    }
+                    if let Some(s) = state {
+                        println!("  state:    → {}", s);
+                    }
+                    if let Some(p) = priority {
+                        println!("  priority: → {}", p);
+                    }
                 }
                 return Ok(());
             }
@@ -541,7 +586,6 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                 },
             )?;
 
-            let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
             if use_json {
                 println!("{}", format_json(&IssueDto::from(&issue)));
             } else {
