@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::{
     application::{errors::ApplicationError, use_cases::list_teams::ListTeams},
-    cli::output::{format_json, should_use_json},
+    cli::output::{format_json, resolve_use_json, should_use_json},
     domain::{entities::team::Team, value_objects::api_key::ApiKey},
     infrastructure::{
         auth::keyring_store::KeyringCredentialStore, graphql::client::LinearGraphqlClient,
@@ -19,9 +19,18 @@ pub struct TeamCommand {
     pub subcommand: TeamSubcommand,
 }
 
+#[derive(Args)]
+pub struct ListArgs {
+    #[arg(long, help = "Output format: json or human")]
+    pub output: Option<String>,
+    /// Use JSON output format (alias for --output json)
+    #[arg(long)]
+    pub json: bool,
+}
+
 #[derive(Subcommand)]
 pub enum TeamSubcommand {
-    List,
+    List(ListArgs),
 }
 
 #[derive(Serialize)]
@@ -65,12 +74,16 @@ pub async fn run_team(cmd: &TeamCommand, force_json: bool) -> Result<(), anyhow:
         .map_err(|e| anyhow::anyhow!(ApplicationError::Auth(e)))?;
 
     match &cmd.subcommand {
-        TeamSubcommand::List => {
+        TeamSubcommand::List(args) => {
             let repo = LinearTeamRepository;
             let use_case = ListTeams::new(Box::new(repo));
             let teams = use_case.execute().await?;
             let dtos: Vec<TeamDto> = teams.iter().map(TeamDto::from).collect();
-            if should_use_json(force_json) {
+            if should_use_json(resolve_use_json(
+                args.json,
+                args.output.as_deref(),
+                force_json,
+            )) {
                 println!("{}", format_json(&dtos));
             } else {
                 println!("Teams: {}", dtos.len());

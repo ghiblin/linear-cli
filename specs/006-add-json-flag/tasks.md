@@ -24,9 +24,9 @@ Single project: `src/`, `tests/` at repository root.
 
 **⚠️ CRITICAL**: All US1 and US2 tasks depend on this phase.
 
-- [ ] T001 Write unit tests for `resolve_use_json()` in `src/cli/output.rs` — cover: `(true, None, false)` → true; `(false, Some("json"), false)` → true; `(false, Some("human"), false)` → false; `(true, Some("human"), false)` → true; `(false, None, false)` → false
-- [ ] T002 Confirm T001 tests fail (function does not exist yet — Red phase confirmed)
-- [ ] T003 Implement `pub fn resolve_use_json(per_cmd_json: bool, output: Option<&str>, force_json: bool) -> bool` in `src/cli/output.rs` and confirm T001 tests pass (Green)
+- [X] T001 Write unit tests for `resolve_use_json()` in `src/cli/output.rs` — cover: `(true, None, false)` → true; `(false, Some("json"), false)` → true; `(false, Some("human"), false)` → false; `(true, Some("human"), false)` → true; `(false, None, false)` → false
+- [X] T002 Confirm T001 tests fail (function does not exist yet — Red phase confirmed)
+- [X] T003 Implement `pub fn resolve_use_json(per_cmd_json: bool, output: Option<&str>, force_json: bool) -> bool` in `src/cli/output.rs` and confirm T001 tests pass (Green)
 
 **Checkpoint**: `resolve_use_json()` is tested, passing, and ready for use.
 
@@ -42,21 +42,21 @@ Single project: `src/`, `tests/` at repository root.
 
 > **Write these tests FIRST — they MUST FAIL before implementation.**
 
-- [ ] T004 [P] [US1] Write snapshot tests for `--json` flag acceptance on issue commands in `tests/integration/issue_json_flag.rs` — test that clap accepts `--json` on `issue list`, `issue get`, `issue create`, `issue update` (parse-only, no API call required)
-- [ ] T005 [P] [US1] Write snapshot tests for `--json` flag acceptance on project commands in `tests/integration/project_json_flag.rs` — cover `project list`, `project get`, `project create`, `project update`, `project archive`
-- [ ] T006 [P] [US1] Write snapshot test for `--json` flag acceptance on `team list` in `tests/integration/team_json_flag.rs`
-- [ ] T007 [US1] Write snapshot tests for `--help` output of `issue list`, `project list`, and `team list` in `tests/integration/help_text.rs` — assert `--json` appears in each help string
-- [ ] T008 [US1] Confirm T004–T007 all fail (no `--json` field on Args structs yet — Red phase confirmed)
+- [X] T004 [P] [US1] Write snapshot tests for `--json` flag acceptance on issue commands in `tests/integration/issue_json_flag.rs` — test that clap accepts `--json` on `issue list`, `issue get`, `issue create`, `issue update` (parse-only, no API call required)
+- [X] T005 [P] [US1] Write snapshot tests for `--json` flag acceptance on project commands in `tests/integration/project_json_flag.rs` — cover `project list`, `project get`, `project create`, `project update`, `project archive`
+- [X] T006 [P] [US1] Write snapshot test for `--json` flag acceptance on `team list` in `tests/integration/team_json_flag.rs`
+- [X] T007 [US1] Write snapshot tests for `--help` output of `issue list`, `project list`, and `team list` in `tests/integration/help_text.rs` — assert `--json` appears in each help string
+- [X] T008 [US1] Confirm T004–T007 all fail (no `--json` field on Args structs yet — Red phase confirmed)
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Add `/// Use JSON output format (alias for --output json)\n#[arg(long)]` `json: bool` field to `IssueListArgs`, `IssueGetArgs`, `IssueCreateArgs`, `IssueUpdateArgs` in `src/cli/commands/issue.rs`
-- [ ] T010 [US1] Replace all `let use_json = ...` expressions in issue command handlers with `resolve_use_json(args.json, args.output.as_deref(), force_json)` in `src/cli/commands/issue.rs` — import `resolve_use_json` from `crate::cli::output`
-- [ ] T011 [US1] Add `json: bool` field (same annotation as T009) to all five project Args structs (`ListArgs`, `GetArgs`, `CreateArgs`, `UpdateArgs`, `ArchiveArgs`) in `src/cli/commands/project.rs`
-- [ ] T012 [US1] Replace all `let use_json = ...` expressions in project command handlers with `resolve_use_json(args.json, args.output.as_deref(), force_json)` in `src/cli/commands/project.rs`
-- [ ] T013 [US1] Add `json: bool` field to `team::ListArgs` AND add `output: Option<String>` field (if absent) to `team::ListArgs` in `src/cli/commands/team.rs`
-- [ ] T014 [US1] Update team list handler to use `resolve_use_json(args.json, args.output.as_deref(), force_json)` in `src/cli/commands/team.rs` — replace the existing `should_use_json(force_json)` call
-- [ ] T015 [US1] Run T004–T007 tests and confirm they now pass (Green phase)
+- [X] T009 [US1] Add `/// Use JSON output format (alias for --output json)\n#[arg(long)]` `json: bool` field to `IssueListArgs`, `IssueGetArgs`, `IssueCreateArgs`, `IssueUpdateArgs` in `src/cli/commands/issue.rs`
+- [X] T010 [US1] Replace all `let use_json = ...` expressions in issue command handlers with `resolve_use_json(args.json, args.output.as_deref(), force_json)` in `src/cli/commands/issue.rs` — import `resolve_use_json` from `crate::cli::output`
+- [X] T011 [US1] Add `json: bool` field (same annotation as T009) to all five project Args structs (`ListArgs`, `GetArgs`, `CreateArgs`, `UpdateArgs`, `ArchiveArgs`) in `src/cli/commands/project.rs`
+- [X] T012 [US1] Replace all `let use_json = ...` expressions in project command handlers with `resolve_use_json(args.json, args.output.as_deref(), force_json)` in `src/cli/commands/project.rs`
+- [X] T013 [US1] Add `json: bool` field to `team::ListArgs` AND add `output: Option<String>` field (if absent) to `team::ListArgs` in `src/cli/commands/team.rs`
+- [X] T014 [US1] Update team list handler to use `resolve_use_json(args.json, args.output.as_deref(), force_json)` in `src/cli/commands/team.rs` — replace the existing `should_use_json(force_json)` call
+- [X] T015 [US1] Run T004–T007 tests and confirm they now pass (Green phase)
 
 **Checkpoint**: `linear <cmd> --json` is accepted by all commands; help text lists `--json`; all snapshot tests pass.
 
@@ -72,10 +72,10 @@ Single project: `src/`, `tests/` at repository root.
 
 > **These build on Phase 1 (T001), which already covers the core logic. These add CLI-level precedence verification.**
 
-- [ ] T016 [US2] Write unit test in `src/cli/output.rs` for conflict case: `resolve_use_json(true, Some("human"), false)` → true (--json beats --output human)
-- [ ] T017 [US2] Write unit test in `src/cli/output.rs`: `resolve_use_json(true, Some("json"), false)` → true (both agree, no conflict)
-- [ ] T018 [US2] Write snapshot test in `tests/integration/issue_json_flag.rs` verifying `--json` and `--output json` produce the same JSON structure for `issue list` (use recorded fixture or mock)
-- [ ] T019 [US2] Confirm T016–T018 pass without additional implementation (logic already correct from T003)
+- [X] T016 [US2] Write unit test in `src/cli/output.rs` for conflict case: `resolve_use_json(true, Some("human"), false)` → true (--json beats --output human)
+- [X] T017 [US2] Write unit test in `src/cli/output.rs`: `resolve_use_json(true, Some("json"), false)` → true (both agree, no conflict)
+- [X] T018 [US2] Write snapshot test in `tests/integration/issue_json_flag.rs` verifying `--json` and `--output json` produce the same JSON structure for `issue list` (use recorded fixture or mock)
+- [X] T019 [US2] Confirm T016–T018 pass without additional implementation (logic already correct from T003)
 
 **Checkpoint**: Conflict resolution is tested and documented. `--json` and `--output json` are verifiably interchangeable.
 
@@ -85,10 +85,10 @@ Single project: `src/`, `tests/` at repository root.
 
 **Purpose**: CI compliance and final validation.
 
-- [ ] T020 [P] Run `cargo clippy -- -D warnings` and resolve any new warnings introduced by added fields or imports in `src/cli/commands/issue.rs`, `src/cli/commands/project.rs`, `src/cli/commands/team.rs`, `src/cli/output.rs`
-- [ ] T021 [P] Run `cargo fmt --check` and apply `cargo fmt` to all modified files
-- [ ] T022 Run `cargo test` (full suite) and confirm all tests pass — no regressions in existing `--output json` behavior
-- [ ] T023 Manually run `linear issue list --json` and `linear issue list --output json` and verify outputs are identical (quickstart.md validation)
+- [X] T020 [P] Run `cargo clippy -- -D warnings` and resolve any new warnings introduced by added fields or imports in `src/cli/commands/issue.rs`, `src/cli/commands/project.rs`, `src/cli/commands/team.rs`, `src/cli/output.rs`
+- [X] T021 [P] Run `cargo fmt --check` and apply `cargo fmt` to all modified files
+- [X] T022 Run `cargo test` (full suite) and confirm all tests pass — no regressions in existing `--output json` behavior
+- [X] T023 Manually run `linear issue list --json` and `linear issue list --output json` and verify outputs are identical (quickstart.md validation)
 
 ---
 

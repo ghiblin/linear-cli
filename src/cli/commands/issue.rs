@@ -11,7 +11,7 @@ use crate::{
             update_issue::UpdateIssue,
         },
     },
-    cli::output::{format_json, should_use_json},
+    cli::output::{format_json, resolve_use_json, should_use_json},
     domain::{
         entities::issue::{CreateIssueInput, Issue, ListIssuesInput, UpdateIssueInput},
         value_objects::{
@@ -54,11 +54,17 @@ pub enum IssueSubcommand {
         cursor: Option<String>,
         #[arg(long)]
         output: Option<String>,
+        /// Use JSON output format (alias for --output json)
+        #[arg(long)]
+        json: bool,
     },
     Get {
         id: String,
         #[arg(long)]
         output: Option<String>,
+        /// Use JSON output format (alias for --output json)
+        #[arg(long)]
+        json: bool,
     },
     Create {
         #[arg(long)]
@@ -85,6 +91,9 @@ pub enum IssueSubcommand {
         dry_run: bool,
         #[arg(long)]
         output: Option<String>,
+        /// Use JSON output format (alias for --output json)
+        #[arg(long)]
+        json: bool,
     },
     Update {
         id: String,
@@ -110,6 +119,9 @@ pub enum IssueSubcommand {
         dry_run: bool,
         #[arg(long)]
         output: Option<String>,
+        /// Use JSON output format (alias for --output json)
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -333,6 +345,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             limit,
             cursor,
             output,
+            json,
         } => {
             let team_id = team
                 .as_deref()
@@ -367,7 +380,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             let repo = LinearIssueRepository::new(api_key_str);
             let use_case = ListIssues::new(Box::new(repo));
             let result = use_case.execute(input).await?;
-            let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
+            let use_json = should_use_json(resolve_use_json(*json, output.as_deref(), force_json));
 
             if use_json {
                 let dto = ListIssuesDto {
@@ -399,7 +412,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             }
         }
 
-        IssueSubcommand::Get { id, output } => {
+        IssueSubcommand::Get { id, output, json } => {
             let repo = LinearIssueRepository::new(api_key_str);
             let use_case = GetIssue::new(Box::new(repo));
             let issue = use_case
@@ -410,7 +423,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                     std::process::exit(1);
                 })?;
 
-            let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
+            let use_json = should_use_json(resolve_use_json(*json, output.as_deref(), force_json));
             if use_json {
                 println!("{}", format_json(&IssueDto::from(&issue)));
             } else {
@@ -431,6 +444,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             parent,
             dry_run,
             output,
+            json,
         } => {
             let project_str = project
                 .clone()
@@ -493,7 +507,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                     std::process::exit(1);
                 })?;
 
-            let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
+            let use_json = should_use_json(resolve_use_json(*json, output.as_deref(), force_json));
             if use_json {
                 println!("{}", format_json(&IssueDto::from(&issue)));
             } else {
@@ -514,13 +528,14 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             no_parent,
             dry_run,
             output,
+            json,
         } => {
             if parent.is_some() && *no_parent {
                 eprintln!("Error: --parent and --no-parent are mutually exclusive");
                 std::process::exit(1);
             }
 
-            let use_json = output.as_deref() == Some("json") || should_use_json(force_json);
+            let use_json = should_use_json(resolve_use_json(*json, output.as_deref(), force_json));
 
             if *dry_run {
                 if use_json {

@@ -15,7 +15,7 @@ use crate::{
             update_project::{UpdateProject, UpdateProjectArgs},
         },
     },
-    cli::output::{format_json, should_use_json},
+    cli::output::{format_json, resolve_use_json, should_use_json},
     domain::{
         errors::DomainError,
         value_objects::{ProjectId, ProjectState, api_key::ApiKey},
@@ -62,6 +62,9 @@ pub struct ListArgs {
         help = "Output format: json or human"
     )]
     pub output: Option<String>,
+    /// Use JSON output format (alias for --output json)
+    #[arg(long)]
+    pub json: bool,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
@@ -76,6 +79,9 @@ pub struct GetArgs {
         help = "Output format: json or human"
     )]
     pub output: Option<String>,
+    /// Use JSON output format (alias for --output json)
+    #[arg(long)]
+    pub json: bool,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
@@ -102,6 +108,9 @@ pub struct CreateArgs {
         help = "Output format: json or human"
     )]
     pub output: Option<String>,
+    /// Use JSON output format (alias for --output json)
+    #[arg(long)]
+    pub json: bool,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
@@ -130,6 +139,9 @@ pub struct UpdateArgs {
         help = "Output format: json or human"
     )]
     pub output: Option<String>,
+    /// Use JSON output format (alias for --output json)
+    #[arg(long)]
+    pub json: bool,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
@@ -146,6 +158,9 @@ pub struct ArchiveArgs {
         help = "Output format: json or human"
     )]
     pub output: Option<String>,
+    /// Use JSON output format (alias for --output json)
+    #[arg(long)]
+    pub json: bool,
     #[arg(long, help = "Print debug info to stderr")]
     pub debug: bool,
 }
@@ -281,7 +296,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
     match &cmd.subcommand {
         ProjectSubcommand::List(args) => {
             let verbose = args.debug;
-            let use_json = force_json || args.output.as_deref() == Some("json");
+            let use_json = resolve_use_json(args.json, args.output.as_deref(), force_json);
             let uc = ListProjects::new(repo);
             let team_id = args
                 .team
@@ -339,7 +354,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
         ProjectSubcommand::Get(args) => {
             let verbose = args.debug;
-            let use_json = force_json || args.output.as_deref() == Some("json");
+            let use_json = resolve_use_json(args.json, args.output.as_deref(), force_json);
             let id = ProjectId::parse(&args.id)
                 .map_err(|e| {
                     eprintln!("error: {}", e);
@@ -394,7 +409,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
         ProjectSubcommand::Create(args) => {
             let verbose = args.debug;
-            let use_json = force_json || args.output.as_deref() == Some("json");
+            let use_json = resolve_use_json(args.json, args.output.as_deref(), force_json);
             let start_date = args
                 .start_date
                 .as_deref()
@@ -473,7 +488,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
         ProjectSubcommand::Update(args) => {
             let verbose = args.debug;
-            let use_json = force_json || args.output.as_deref() == Some("json");
+            let use_json = resolve_use_json(args.json, args.output.as_deref(), force_json);
 
             let state = args
                 .state
@@ -561,7 +576,7 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
 
         ProjectSubcommand::Archive(args) => {
             let verbose = args.debug;
-            let use_json = force_json || args.output.as_deref() == Some("json");
+            let use_json = resolve_use_json(args.json, args.output.as_deref(), force_json);
             let id_str = args.id.clone();
             let id = ProjectId::parse(&id_str)
                 .map_err(|e| {
@@ -724,6 +739,7 @@ mod tests {
             cursor: None,
             all: false,
             output: None,
+            json: false,
             debug: false,
         };
         assert!(!args.debug);
@@ -734,6 +750,7 @@ mod tests {
         let args = GetArgs {
             id: "id".into(),
             output: None,
+            json: false,
             debug: false,
         };
         assert!(!args.debug);
@@ -750,6 +767,7 @@ mod tests {
             target_date: None,
             dry_run: false,
             output: None,
+            json: false,
             debug: false,
         };
         assert!(!args.debug);
@@ -767,6 +785,7 @@ mod tests {
             target_date: None,
             dry_run: false,
             output: None,
+            json: false,
             debug: false,
         };
         assert!(!args.debug);
@@ -778,6 +797,7 @@ mod tests {
             id: "id".into(),
             dry_run: false,
             output: None,
+            json: false,
             debug: false,
         };
         assert!(!args.debug);
