@@ -355,14 +355,20 @@ pub async fn fetch_status_id_for_type(
 // ---- Shared helpers ----
 
 fn format_validation_errors(v: &serde_json::Value) -> String {
-    match v {
-        serde_json::Value::Object(map) => map
+    // Linear returns an array of {property, constraints: {ruleName: "message"}, ...}.
+    // Collect all constraint message strings across all items.
+    if let Some(items) = v.as_array() {
+        let messages: Vec<String> = items
             .iter()
-            .map(|(field, msgs)| format!("{}: {}", field, msgs))
-            .collect::<Vec<_>>()
-            .join(", "),
-        other => other.to_string(),
+            .filter_map(|item| item.get("constraints"))
+            .filter_map(|c| c.as_object())
+            .flat_map(|c| c.values().filter_map(|m| m.as_str()).map(String::from))
+            .collect();
+        if !messages.is_empty() {
+            return messages.join(", ");
+        }
     }
+    v.to_string()
 }
 
 pub fn map_errors(errors: Vec<GraphqlError>) -> crate::domain::errors::DomainError {
