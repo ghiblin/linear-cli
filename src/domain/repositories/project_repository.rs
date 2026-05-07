@@ -28,6 +28,7 @@ pub trait ProjectRepository: Send + Sync {
         team_id: Option<TeamId>,
         first: u32,
         after: Option<String>,
+        name_contains: Option<String>,
     ) -> Result<ListProjectsResult, DomainError>;
 
     async fn get(&self, id: ProjectId) -> Result<Project, DomainError>;

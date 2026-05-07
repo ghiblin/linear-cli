@@ -32,6 +32,8 @@ pub struct StringComparatorInput {
     pub eq: Option<String>,
     #[cynic(rename = "eqIgnoreCase", skip_serializing_if = "Option::is_none")]
     pub eq_ignore_case: Option<String>,
+    #[cynic(rename = "containsIgnoreCase", skip_serializing_if = "Option::is_none")]
+    pub contains_ignore_case: Option<String>,
 }
 
 #[derive(cynic::InputObject, Debug)]
@@ -102,12 +104,13 @@ pub struct IssueFilterInput {
     pub labels: Option<LabelCollectionFilterInput>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub id: Option<IssueIdComparatorInput>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub title: Option<StringComparatorInput>,
     /// Compound filters — all conditions must match (AND semantics).
     /// Used to require that an issue carries every label when multiple --label
     /// flags are supplied (FR-002: "issues must carry ALL specified labels").
-    /// Box breaks the recursive type size cycle required by Rust.
     #[cynic(skip_serializing_if = "Option::is_none")]
-    pub and: Option<Vec<Box<IssueFilterInput>>>,
+    pub and: Option<Vec<IssueFilterInput>>,
 }
 
 // ---- Fragment types ----
@@ -316,6 +319,7 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
         name: Some(StringComparatorInput {
             eq: Some(s.clone()),
             eq_ignore_case: None,
+            contains_ignore_case: None,
         }),
         team: None,
     });
@@ -331,6 +335,15 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
             eq: Some(pv as f64),
         }
     });
+    let title = input
+        .title_contains
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(|s| StringComparatorInput {
+            eq: None,
+            eq_ignore_case: None,
+            contains_ignore_case: Some(s.to_string()),
+        });
     // Build per-label sub-filters. FR-002 requires AND semantics: an issue must
     // carry ALL specified labels. Linear's IssueFilter.and field chains filters
     // such that every element must match, giving us the required AND logic.
@@ -345,25 +358,24 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
             }),
         }),
     });
-    let extra_label_filters: Vec<Box<IssueFilterInput>> = label_iter
-        .map(|l| {
-            Box::new(IssueFilterInput {
-                labels: Some(LabelCollectionFilterInput {
-                    some: Some(IssueLabelFilterInput {
-                        id: Some(IdComparatorInput {
-                            eq: Some(cynic::Id::new(l.to_string())),
-                            in_list: None,
-                        }),
+    let extra_label_filters: Vec<IssueFilterInput> = label_iter
+        .map(|l| IssueFilterInput {
+            labels: Some(LabelCollectionFilterInput {
+                some: Some(IssueLabelFilterInput {
+                    id: Some(IdComparatorInput {
+                        eq: Some(cynic::Id::new(l.to_string())),
+                        in_list: None,
                     }),
                 }),
-                team: None,
-                project: None,
-                state: None,
-                assignee: None,
-                priority: None,
-                id: None,
-                and: None,
-            })
+            }),
+            team: None,
+            project: None,
+            state: None,
+            assignee: None,
+            priority: None,
+            id: None,
+            title: None,
+            and: None,
         })
         .collect();
     let and = if extra_label_filters.is_empty() {
@@ -378,6 +390,7 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
         && assignee.is_none()
         && priority.is_none()
         && labels.is_none()
+        && title.is_none()
     {
         return None;
     }
@@ -390,6 +403,7 @@ fn build_issue_filter(input: &ListIssuesInput) -> Option<IssueFilterInput> {
         priority,
         labels,
         id: None,
+        title,
         and,
     })
 }
@@ -459,4 +473,78 @@ pub async fn fetch_workflow_states(
     resp.data
         .ok_or_else(|| DomainError::InvalidInput("empty response from Linear API".to_string()))
         .map(|d| d.workflow_states.nodes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{entities::issue::ListIssuesInput, value_objects::team_id::TeamId};
+
+    fn default_list_input() -> ListIssuesInput {
+        ListIssuesInput {
+            team_id: None,
+            project_id: None,
+            state_name: None,
+            assignee_id: None,
+            priority: None,
+            label_ids: vec![],
+            limit: 50,
+            cursor: None,
+            all_pages: false,
+            title_contains: None,
+        }
+    }
+
+    // T001
+    #[test]
+    fn title_contains_is_threaded_to_filter() {
+        let input = ListIssuesInput {
+            title_contains: Some("login".to_string()),
+            ..default_list_input()
+        };
+        let filter = build_issue_filter(&input).expect("expected a filter");
+        let title = filter.title.expect("expected title field in filter");
+        assert_eq!(title.contains_ignore_case, Some("login".to_string()));
+    }
+
+    // T002
+    #[test]
+    fn empty_title_is_treated_as_no_filter() {
+        let with_empty = ListIssuesInput {
+            title_contains: Some("".to_string()),
+            ..default_list_input()
+        };
+        let with_none = ListIssuesInput {
+            title_contains: None,
+            ..default_list_input()
+        };
+        assert!(build_issue_filter(&with_empty).is_none());
+        assert!(build_issue_filter(&with_none).is_none());
+    }
+
+    // T016
+    #[test]
+    fn title_and_state_filter_compose() {
+        let input = ListIssuesInput {
+            title_contains: Some("auth".to_string()),
+            state_name: Some("in_progress".to_string()),
+            ..default_list_input()
+        };
+        let filter = build_issue_filter(&input).expect("expected a filter");
+        assert!(filter.title.is_some(), "title filter should be set");
+        assert!(filter.state.is_some(), "state filter should be set");
+    }
+
+    // T017
+    #[test]
+    fn title_and_team_filter_compose() {
+        let input = ListIssuesInput {
+            title_contains: Some("deploy".to_string()),
+            team_id: Some(TeamId::new("team-1".to_string()).unwrap()),
+            ..default_list_input()
+        };
+        let filter = build_issue_filter(&input).expect("expected a filter");
+        assert!(filter.title.is_some(), "title filter should be set");
+        assert!(filter.team.is_some(), "team filter should be set");
+    }
 }

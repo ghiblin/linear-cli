@@ -105,12 +105,13 @@ pub enum PaginationOrderBy {
 pub struct ProjectsVariables {
     pub first: i32,
     pub after: Option<String>,
+    pub filter: Option<ProjectFilter>,
 }
 
 #[derive(cynic::QueryFragment, Debug)]
 #[cynic(graphql_type = "Query", variables = "ProjectsVariables")]
 pub struct ProjectsQuery {
-    #[arguments(first: $first, after: $after, orderBy: updatedAt)]
+    #[arguments(first: $first, after: $after, orderBy: updatedAt, filter: $filter)]
     pub projects: ProjectConnection,
 }
 
@@ -119,6 +120,7 @@ pub struct TeamProjectsVariables {
     pub team_id: String,
     pub first: i32,
     pub after: Option<String>,
+    pub filter: Option<ProjectFilter>,
 }
 
 #[derive(cynic::QueryFragment, Debug)]
@@ -131,7 +133,7 @@ pub struct TeamProjectsQuery {
 #[derive(cynic::QueryFragment, Debug)]
 #[cynic(graphql_type = "Team", variables = "TeamProjectsVariables")]
 pub struct TeamWithProjects {
-    #[arguments(first: $first, after: $after, orderBy: updatedAt)]
+    #[arguments(first: $first, after: $after, orderBy: updatedAt, filter: $filter)]
     pub projects: ProjectConnection,
 }
 
@@ -141,12 +143,23 @@ pub async fn fetch_projects(
     first: i32,
     after: Option<String>,
     team_id: Option<&str>,
+    name_contains: Option<&str>,
 ) -> Result<(Vec<ProjectNode>, PageInfoNode), crate::domain::errors::DomainError> {
+    let filter = name_contains
+        .filter(|s| !s.is_empty())
+        .map(|s| ProjectFilter {
+            slug_id: None,
+            name: Some(StringComparator {
+                eq: None,
+                contains_ignore_case: Some(s.to_string()),
+            }),
+        });
     if let Some(tid) = team_id {
         let op = TeamProjectsQuery::build(TeamProjectsVariables {
             team_id: tid.to_string(),
             first,
             after,
+            filter,
         });
         let resp: GraphqlResponse<TeamProjectsQuery> =
             execute_with_retry(client, api_key, &op.query, op.variables).await?;
@@ -160,7 +173,11 @@ pub async fn fetch_projects(
         })?;
         Ok((data.team.projects.nodes, data.team.projects.page_info))
     } else {
-        let op = ProjectsQuery::build(ProjectsVariables { first, after });
+        let op = ProjectsQuery::build(ProjectsVariables {
+            first,
+            after,
+            filter,
+        });
         let resp: GraphqlResponse<ProjectsQuery> =
             execute_with_retry(client, api_key, &op.query, op.variables).await?;
         if let Some(errors) = resp.errors {
@@ -206,13 +223,19 @@ pub struct SlugProjectConnection {
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "ProjectFilter")]
 pub struct ProjectFilter {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub slug_id: Option<StringComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub name: Option<StringComparator>,
 }
 
 #[derive(cynic::InputObject, Debug)]
 #[cynic(graphql_type = "StringComparator")]
 pub struct StringComparator {
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub eq: Option<String>,
+    #[cynic(rename = "containsIgnoreCase", skip_serializing_if = "Option::is_none")]
+    pub contains_ignore_case: Option<String>,
 }
 
 #[derive(cynic::QueryVariables, Debug)]
@@ -255,7 +278,9 @@ pub async fn resolve_slug_to_uuid(
         filter: ProjectFilter {
             slug_id: Some(StringComparator {
                 eq: Some(slug.to_string()),
+                contains_ignore_case: None,
             }),
+            name: None,
         },
     });
     let resp: GraphqlResponse<SlugLookupQuery> =

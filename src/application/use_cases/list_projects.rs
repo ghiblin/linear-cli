@@ -25,16 +25,21 @@ impl ListProjects {
         first: u32,
         after: Option<String>,
         all: bool,
+        name_contains: Option<String>,
     ) -> Result<ListProjectsResult, DomainError> {
+        let name_filter = name_contains.filter(|s| !s.is_empty());
         if !all {
-            return self.repo.list(team_id, first, after).await;
+            return self.repo.list(team_id, first, after, name_filter).await;
         }
 
         let mut items: Vec<Project> = Vec::new();
         let mut cursor: Option<String> = None;
 
         loop {
-            let page = self.repo.list(team_id.clone(), first, cursor).await?;
+            let page = self
+                .repo
+                .list(team_id.clone(), first, cursor, name_filter.clone())
+                .await?;
             items.extend(page.items);
             if !page.page_info.has_next_page {
                 return Ok(ListProjectsResult {
@@ -76,6 +81,7 @@ mod tests {
                 team_id: Option<TeamId>,
                 first: u32,
                 after: Option<String>,
+                name_contains: Option<String>,
             ) -> Result<ListProjectsResult, DomainError>;
             async fn get(&self, id: ProjectId) -> Result<Project, DomainError>;
             async fn create(&self, input: CreateProjectInput) -> Result<Project, DomainError>;
@@ -103,10 +109,10 @@ mod tests {
         let mut mock = MockTestRepo::new();
         mock.expect_list()
             .times(1)
-            .returning(|_, _, _| Ok(empty_result(false, None)));
+            .returning(|_, _, _, _| Ok(empty_result(false, None)));
 
         let uc = ListProjects::new(Arc::new(mock));
-        let result = uc.execute(None, 50, None, false).await.unwrap();
+        let result = uc.execute(None, 50, None, false, None).await.unwrap();
         assert!(!result.page_info.has_next_page);
     }
 
@@ -115,15 +121,15 @@ mod tests {
         let mut mock = MockTestRepo::new();
         mock.expect_list()
             .times(1)
-            .withf(|_, _, after| after.is_none())
-            .returning(|_, _, _| Ok(empty_result(true, Some("cursor1"))));
+            .withf(|_, _, after, _| after.is_none())
+            .returning(|_, _, _, _| Ok(empty_result(true, Some("cursor1"))));
         mock.expect_list()
             .times(1)
-            .withf(|_, _, after| after.as_deref() == Some("cursor1"))
-            .returning(|_, _, _| Ok(empty_result(false, None)));
+            .withf(|_, _, after, _| after.as_deref() == Some("cursor1"))
+            .returning(|_, _, _, _| Ok(empty_result(false, None)));
 
         let uc = ListProjects::new(Arc::new(mock));
-        let result = uc.execute(None, 50, None, true).await.unwrap();
+        let result = uc.execute(None, 50, None, true, None).await.unwrap();
         assert!(!result.page_info.has_next_page);
     }
 
@@ -132,10 +138,42 @@ mod tests {
         let mut mock = MockTestRepo::new();
         mock.expect_list()
             .times(1)
-            .returning(|_, _, _| Ok(empty_result(false, None)));
+            .returning(|_, _, _, _| Ok(empty_result(false, None)));
 
         let uc = ListProjects::new(Arc::new(mock));
-        let result = uc.execute(None, 50, None, false).await.unwrap();
+        let result = uc.execute(None, 50, None, false, None).await.unwrap();
+        assert!(result.items.is_empty());
+    }
+
+    // T008
+    #[tokio::test]
+    async fn name_contains_filters_to_matching_projects() {
+        let mut mock = MockTestRepo::new();
+        mock.expect_list()
+            .withf(|_, _, _, name_contains| name_contains.as_deref() == Some("Platform"))
+            .returning(|_, _, _, _| Ok(empty_result(false, None)));
+
+        let uc = ListProjects::new(Arc::new(mock));
+        let result = uc
+            .execute(None, 50, None, false, Some("Platform".to_string()))
+            .await
+            .unwrap();
+        assert!(result.items.is_empty());
+    }
+
+    // T009
+    #[tokio::test]
+    async fn empty_name_is_treated_as_no_filter() {
+        let mut mock = MockTestRepo::new();
+        mock.expect_list()
+            .withf(|_, _, _, name_contains| name_contains.is_none())
+            .returning(|_, _, _, _| Ok(empty_result(false, None)));
+
+        let uc = ListProjects::new(Arc::new(mock));
+        let result = uc
+            .execute(None, 50, None, false, Some("".to_string()))
+            .await
+            .unwrap();
         assert!(result.items.is_empty());
     }
 }

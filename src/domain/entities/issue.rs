@@ -124,6 +124,7 @@ pub struct ListIssuesInput {
     pub limit: i32,
     pub cursor: Option<String>,
     pub all_pages: bool,
+    pub title_contains: Option<String>,
 }
 
 #[derive(Debug, Clone)]
