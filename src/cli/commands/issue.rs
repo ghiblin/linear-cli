@@ -63,6 +63,10 @@ pub enum IssueSubcommand {
     Get {
         id: String,
         #[arg(long)]
+        description: bool,
+        #[arg(long)]
+        subtasks: bool,
+        #[arg(long)]
         output: Option<String>,
         /// Use JSON output format (alias for --output json)
         #[arg(long)]
@@ -306,48 +310,166 @@ impl From<&Issue> for IssueDto {
     }
 }
 
-fn format_issue_human(issue: &Issue) {
-    println!("Identifier: {}", issue.identifier);
-    println!("Title:      {}", issue.title());
-    println!("State:      {}", issue.state().name);
-    println!("Priority:   {}", priority_label(issue.priority()));
+fn render_issue_human(issue: &Issue, show_description: bool, show_subtasks: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("Identifier: {}\n", issue.identifier));
+    out.push_str(&format!("Title:      {}\n", issue.title()));
+    out.push_str(&format!("State:      {}\n", issue.state().name));
+    out.push_str(&format!(
+        "Priority:   {}\n",
+        priority_label(issue.priority())
+    ));
     if let Some(ref name) = issue.assignee_name {
-        println!("Assignee:   {}", name);
+        out.push_str(&format!("Assignee:   {}\n", name));
     }
     if !issue.label_ids.is_empty() {
         let ids: Vec<String> = issue.label_ids.iter().map(|l| l.to_string()).collect();
-        println!("Labels:     {}", ids.join(", "));
+        out.push_str(&format!("Labels:     {}\n", ids.join(", ")));
     }
     if let Some(ref d) = issue.due_date {
-        println!("Due date:   {}", d);
+        out.push_str(&format!("Due date:   {}\n", d));
     }
     if let Some(e) = issue.estimate {
-        println!("Estimate:   {}", e);
+        out.push_str(&format!("Estimate:   {}\n", e));
     }
     if let Some(ref pt) = issue.parent_title {
-        println!(
-            "Parent:     {} ({})",
+        out.push_str(&format!(
+            "Parent:     {} ({})\n",
             issue
                 .parent_id
                 .as_ref()
                 .map(|i| i.to_string())
                 .unwrap_or_default(),
             pt
-        );
+        ));
     }
-    if !issue.sub_issues.is_empty() {
-        println!("Sub-issues:");
-        for s in &issue.sub_issues {
-            println!("  {} — {}", s.identifier, s.title);
+    if show_description {
+        if let Some(ref desc) = issue.description {
+            out.push_str("Description:\n");
+            out.push_str(&format!("  {}\n", desc));
         }
     }
+    if show_subtasks && !issue.sub_issues.is_empty() {
+        out.push_str("Sub-issues:\n");
+        for s in &issue.sub_issues {
+            out.push_str(&format!("  {} — {}\n", s.identifier, s.title));
+        }
+    }
+    out
+}
+
+fn format_issue_human(issue: &Issue, show_description: bool, show_subtasks: bool) {
+    print!(
+        "{}",
+        render_issue_human(issue, show_description, show_subtasks)
+    );
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::domain::{
+        entities::issue::{Issue, SubIssueRef},
+        value_objects::{
+            issue_id::IssueId, priority::Priority, team_id::TeamId,
+            workflow_state_ref::WorkflowStateRef,
+        },
+    };
+
+    fn make_state() -> WorkflowStateRef {
+        WorkflowStateRef {
+            id: "state-1".to_string(),
+            name: "In Progress".to_string(),
+            state_type: "started".to_string(),
+        }
+    }
+
+    fn make_issue(description: Option<&str>, sub_issues: Vec<SubIssueRef>) -> Issue {
+        Issue::new(
+            IssueId::new("issue-1".to_string()).unwrap(),
+            "ENG-1".to_string(),
+            "Test issue".to_string(),
+            description.map(|s| s.to_string()),
+            make_state(),
+            Priority::Medium,
+            TeamId::new("team-1".to_string()).unwrap(),
+            None,
+            None,
+            vec![],
+            None,
+            None,
+            None,
+            None,
+            sub_issues,
+            "2026-01-01T00:00:00Z".to_string(),
+            "2026-01-01T00:00:00Z".to_string(),
+        )
+        .unwrap()
+    }
+
+    fn make_sub_issue() -> SubIssueRef {
+        SubIssueRef {
+            id: IssueId::new("sub-1".to_string()).unwrap(),
+            identifier: "ENG-2".to_string(),
+            title: "Sub task".to_string(),
+        }
+    }
+
     #[test]
     fn auth_guard_run_issue_requires_auth() {
         assert!(true, "auth guard tested via integration tests");
+    }
+
+    #[test]
+    fn description_shown_when_flag_true() {
+        let issue = make_issue(Some("My description text"), vec![]);
+        let output = render_issue_human(&issue, true, false);
+        assert!(
+            output.contains("Description:"),
+            "expected Description: section"
+        );
+        assert!(output.contains("My description text"));
+    }
+
+    #[test]
+    fn description_hidden_when_flag_false() {
+        let issue = make_issue(Some("My description text"), vec![]);
+        let output = render_issue_human(&issue, false, false);
+        assert!(
+            !output.contains("Description:"),
+            "description should be hidden by default"
+        );
+    }
+
+    #[test]
+    fn subtasks_shown_when_flag_true() {
+        let issue = make_issue(None, vec![make_sub_issue()]);
+        let output = render_issue_human(&issue, false, true);
+        assert!(
+            output.contains("Sub-issues:"),
+            "expected Sub-issues: section"
+        );
+        assert!(output.contains("ENG-2"));
+    }
+
+    #[test]
+    fn subtasks_hidden_when_flag_false() {
+        let issue = make_issue(None, vec![make_sub_issue()]);
+        let output = render_issue_human(&issue, false, false);
+        assert!(
+            !output.contains("Sub-issues:"),
+            "sub-issues should be hidden by default"
+        );
+    }
+
+    #[test]
+    fn both_flags_true_shows_both_sections() {
+        let issue = make_issue(Some("Desc text"), vec![make_sub_issue()]);
+        let output = render_issue_human(&issue, true, true);
+        assert!(output.contains("Description:"));
+        assert!(output.contains("Desc text"));
+        assert!(output.contains("Sub-issues:"));
+        assert!(output.contains("ENG-2"));
     }
 }
 
@@ -454,7 +576,13 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             }
         }
 
-        IssueSubcommand::Get { id, output, json } => {
+        IssueSubcommand::Get {
+            id,
+            output,
+            json,
+            description,
+            subtasks,
+        } => {
             let repo = LinearIssueRepository::new(api_key_str);
             let use_case = GetIssue::new(Box::new(repo));
             let issue = use_case
@@ -469,7 +597,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             if use_json {
                 println!("{}", format_json(&IssueDto::from(&issue)));
             } else {
-                format_issue_human(&issue);
+                format_issue_human(&issue, *description, *subtasks);
             }
         }
 

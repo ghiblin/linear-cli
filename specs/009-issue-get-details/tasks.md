@@ -21,8 +21,8 @@
 
 **⚠️ CRITICAL**: Tests must be written first and confirmed failing before any implementation.
 
-- [ ] T001 Write failing unit tests for `render_issue_human` in `src/cli/commands/issue.rs` — cover: (a) description shown when `show_description=true`, (b) description hidden when false, (c) sub-issues shown when `show_subtasks=true`, (d) sub-issues hidden when false, (e) both flags true shows both sections. Reference the function before it exists to cause compile failure (Red).
-- [ ] T002 Extract a `render_issue_human(issue: &Issue, show_description: bool, show_subtasks: bool) -> String` helper from `format_issue_human` in `src/cli/commands/issue.rs`; update `format_issue_human` to call it and print the result. Tests from T001 now compile but description and subtasks cases still fail.
+- [X] T001 Write failing unit tests for `render_issue_human` in `src/cli/commands/issue.rs` — cover: (a) description shown when `show_description=true`, (b) description hidden when false, (c) sub-issues shown when `show_subtasks=true`, (d) sub-issues hidden when false, (e) both flags true shows both sections. Reference the function before it exists to cause compile failure (Red).
+- [X] T002 Extract a `render_issue_human(issue: &Issue, show_description: bool, show_subtasks: bool) -> String` helper from `format_issue_human` in `src/cli/commands/issue.rs`; update `format_issue_human` to call it and print the result. Tests from T001 now compile but description and subtasks cases still fail.
 
 **Checkpoint**: `cargo test` compiles; description and subtasks test cases are failing (Red confirmed).
 
@@ -34,8 +34,8 @@
 
 **Independent Test**: `linear issue get ENG-X --description` prints the `Description:` block when the issue has a description; omits it when absent.
 
-- [ ] T003 [US1] Implement `show_description` branch in `render_issue_human` in `src/cli/commands/issue.rs`: when `show_description=true` and `issue.description` is `Some`, append a `Description:\n  <text>` section to the output. US1 unit tests from T001 now pass (Green).
-- [ ] T004 [US1] Add `#[arg(long)] description: bool` to `IssueSubcommand::Get` and destructure it in the `Get` match arm of `run_issue`; pass it as `show_description` to `format_issue_human` in `src/cli/commands/issue.rs`.
+- [X] T003 [US1] Implement `show_description` branch in `render_issue_human` in `src/cli/commands/issue.rs`: when `show_description=true` and `issue.description` is `Some`, append a `Description:\n  <text>` section to the output. US1 unit tests from T001 now pass (Green).
+- [X] T004 [US1] Add `#[arg(long)] description: bool` to `IssueSubcommand::Get` and destructure it in the `Get` match arm of `run_issue`; pass it as `show_description` to `format_issue_human` in `src/cli/commands/issue.rs`.
 
 **Checkpoint**: `cargo test` green; `linear issue get <id> --description` prints the description; default output unchanged.
 
@@ -47,8 +47,8 @@
 
 **Independent Test**: `linear issue get ENG-X --subtasks` prints the `Sub-issues:` block when children exist; default `issue get ENG-X` no longer shows sub-issues unconditionally.
 
-- [ ] T005 [US2] Implement `show_subtasks` branch in `render_issue_human` in `src/cli/commands/issue.rs`: gate the sub-issue block behind `show_subtasks=true` and remove the existing unconditional sub-issue display. US2 unit tests from T001 now pass (Green).
-- [ ] T006 [US2] Add `#[arg(long)] subtasks: bool` to `IssueSubcommand::Get` and destructure it in the `Get` match arm; pass it as `show_subtasks` to `format_issue_human` in `src/cli/commands/issue.rs`.
+- [X] T005 [US2] Implement `show_subtasks` branch in `render_issue_human` in `src/cli/commands/issue.rs`: gate the sub-issue block behind `show_subtasks=true` and remove the existing unconditional sub-issue display. US2 unit tests from T001 now pass (Green).
+- [X] T006 [US2] Add `#[arg(long)] subtasks: bool` to `IssueSubcommand::Get` and destructure it in the `Get` match arm; pass it as `show_subtasks` to `format_issue_human` in `src/cli/commands/issue.rs`.
 
 **Checkpoint**: `cargo test` green; `linear issue get <id> --subtasks` shows sub-issues; default output no longer includes sub-issues.
 
@@ -60,7 +60,7 @@
 
 **Independent Test**: `linear issue get ENG-X --description --subtasks` prints both the `Description:` block and the `Sub-issues:` block.
 
-- [ ] T007 [US3] Run `cargo test` and verify the combined-flags unit test (scenario e from T001) passes. No additional code changes needed — T003 + T005 already implement independent branches that compose correctly.
+- [X] T007 [US3] Run `cargo test` and verify the combined-flags unit test (scenario e from T001) passes. No additional code changes needed — T003 + T005 already implement independent branches that compose correctly.
 
 **Checkpoint**: All unit tests green including combined-flags case.
 
@@ -70,9 +70,9 @@
 
 **Purpose**: Confirm the implementation is clean and consistent before completion.
 
-- [ ] T008 [P] Run `cargo clippy -- -D warnings` from repo root and resolve any warnings in `src/cli/commands/issue.rs`.
-- [ ] T009 [P] Run `cargo fmt --check` from repo root and apply `cargo fmt` if needed.
-- [ ] T010 Run `cargo test` from repo root and confirm all tests pass (unit + any existing integration tests).
+- [X] T008 [P] Run `cargo clippy -- -D warnings` from repo root and resolve any warnings in `src/cli/commands/issue.rs`.
+- [X] T009 [P] Run `cargo fmt --check` from repo root and apply `cargo fmt` if needed.
+- [X] T010 Run `cargo test` from repo root and confirm all tests pass (unit + any existing integration tests).
 
 ---
 
