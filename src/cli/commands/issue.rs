@@ -7,8 +7,8 @@ use crate::{
     application::{
         errors::ApplicationError,
         use_cases::{
-            create_issue::CreateIssue, get_issue::GetIssue, list_issues::ListIssues,
-            update_issue::UpdateIssue,
+            create_issue::CreateIssue, delete_issue::DeleteIssue, get_issue::GetIssue,
+            list_issues::ListIssues, update_issue::UpdateIssue,
         },
     },
     cli::output::{format_json, resolve_use_json, should_use_json},
@@ -125,6 +125,16 @@ pub enum IssueSubcommand {
         #[arg(long)]
         json: bool,
     },
+    Delete {
+        id: String,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        output: Option<String>,
+        /// Use JSON output format (alias for --output json)
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 // ---- DTOs for JSON output ----
@@ -170,6 +180,18 @@ struct UpdateDryRunDto {
     parent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     no_parent: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct DeleteResultDto {
+    deleted: bool,
+    id: String,
+}
+
+#[derive(Serialize)]
+struct DeleteDryRunDto {
+    dry_run: bool,
+    id: String,
 }
 
 #[derive(Serialize)]
@@ -643,6 +665,54 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                 println!("{}", format_json(&IssueDto::from(&issue)));
             } else {
                 println!("Updated {}: {}", issue.identifier, issue.title());
+            }
+        }
+
+        IssueSubcommand::Delete {
+            id,
+            dry_run,
+            output,
+            json,
+        } => {
+            let use_json = should_use_json(resolve_use_json(*json, output.as_deref(), force_json));
+
+            if *dry_run {
+                if use_json {
+                    println!(
+                        "{}",
+                        format_json(&DeleteDryRunDto {
+                            dry_run: true,
+                            id: id.clone()
+                        })
+                    );
+                } else {
+                    println!("[dry-run] Would delete issue: {}", id);
+                }
+                return Ok(());
+            }
+
+            let issue_id = IssueId::new(id.clone()).map_err(|e| {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            })?;
+
+            let repo = Arc::new(LinearIssueRepository::new(api_key_str));
+            let use_case = DeleteIssue::new(repo);
+            use_case.execute(issue_id, false).await.map_err(|e| {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            })?;
+
+            if use_json {
+                println!(
+                    "{}",
+                    format_json(&DeleteResultDto {
+                        deleted: true,
+                        id: id.clone()
+                    })
+                );
+            } else {
+                println!("Deleted issue {}", id);
             }
         }
     }

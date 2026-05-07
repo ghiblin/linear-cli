@@ -17,7 +17,7 @@ use crate::{
     },
     infrastructure::graphql::{
         mutations::issue_mutations::{
-            IssueCreateInput, IssueUpdateInput, create_issue, update_issue,
+            IssueCreateInput, IssueUpdateInput, create_issue, delete_issue, update_issue,
         },
         queries::{
             issue_queries::{
@@ -281,6 +281,11 @@ impl IssueRepository for LinearIssueRepository {
         };
         let node = update_issue(&self.http, &self.api_key, id.as_str(), cynic_input).await?;
         node_to_issue_detail(node)
+    }
+
+    #[instrument(skip(self))]
+    async fn delete(&self, id: IssueId) -> Result<(), DomainError> {
+        delete_issue(&self.http, &self.api_key, id.as_str()).await
     }
 
     #[instrument(skip(self))]

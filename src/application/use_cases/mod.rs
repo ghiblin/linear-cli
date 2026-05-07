@@ -2,6 +2,7 @@ pub mod archive_project;
 pub mod auth_status;
 pub mod create_issue;
 pub mod create_project;
+pub mod delete_issue;
 pub mod get_issue;
 pub mod get_project;
 pub mod list_issues;

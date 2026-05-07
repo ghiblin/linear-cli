@@ -19,4 +19,5 @@ pub trait IssueRepository: Send + Sync {
         &self,
         team_id: TeamId,
     ) -> Result<Vec<WorkflowStateInfo>, DomainError>;
+    async fn delete(&self, id: IssueId) -> Result<(), DomainError>;
 }

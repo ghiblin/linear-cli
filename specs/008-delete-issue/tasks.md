@@ -24,7 +24,7 @@ No project setup needed — all additions slot into the existing single-project 
 
 **⚠️ CRITICAL**: No user story work can begin until T001 is complete.
 
-- [ ] T001 Add `delete(id: IssueId) -> Result<(), DomainError>` method to the `IssueRepository` trait in `src/domain/repositories/issue_repository.rs`
+- [x] T001 Add `delete(id: IssueId) -> Result<(), DomainError>` method to the `IssueRepository` trait in `src/domain/repositories/issue_repository.rs`
 
 **Checkpoint**: Trait extended. All downstream layers can now be compiled against it.
 
@@ -40,15 +40,15 @@ No project setup needed — all additions slot into the existing single-project 
 
 > **Write these tests FIRST and confirm they FAIL (Red) before writing implementation code.**
 
-- [ ] T002 [US1] Write failing unit tests for `DeleteIssue` use case (success path + not_found error path using `mockall`) inside `#[cfg(test)]` module in `src/application/use_cases/delete_issue.rs`
+- [x] T002 [US1] Write failing unit tests for `DeleteIssue` use case (success path + not_found error path using `mockall`) inside `#[cfg(test)]` module in `src/application/use_cases/delete_issue.rs`
 
 ### Implementation for User Story 1
 
-- [ ] T003 [P] [US1] Add `IssueDeleteVariables`, `IssueArchivePayload`, `IssueDeleteMutation` cynic types and `delete_issue()` async fn to `src/infrastructure/graphql/mutations/issue_mutations.rs` (can run in parallel with T002 — different file)
-- [ ] T004 [US1] Create `src/application/use_cases/delete_issue.rs` with `DeleteOutcome` enum and `DeleteIssue` use case struct; implement `execute(id, dry_run=false)` to make T002 tests green
-- [ ] T005 [US1] Register `pub mod delete_issue;` in `src/application/use_cases/mod.rs`
-- [ ] T006 [US1] Implement `delete()` on `LinearIssueRepository` in `src/infrastructure/repositories/issue_repository.rs` using the `delete_issue()` fn from T003 (depends on T003)
-- [ ] T007 [US1] Add `Delete { id, output, json }` variant to `IssueSubcommand` and live-path handler arm in `src/cli/commands/issue.rs`; print `"Deleted issue {id}"` on success, JSON `{"deleted":true,"id":"..."}` when `--json` (depends on T004, T005, T006)
+- [x] T003 [P] [US1] Add `IssueDeleteVariables`, `IssueArchivePayload`, `IssueDeleteMutation` cynic types and `delete_issue()` async fn to `src/infrastructure/graphql/mutations/issue_mutations.rs` (can run in parallel with T002 — different file)
+- [x] T004 [US1] Create `src/application/use_cases/delete_issue.rs` with `DeleteOutcome` enum and `DeleteIssue` use case struct; implement `execute(id, dry_run=false)` to make T002 tests green
+- [x] T005 [US1] Register `pub mod delete_issue;` in `src/application/use_cases/mod.rs`
+- [x] T006 [US1] Implement `delete()` on `LinearIssueRepository` in `src/infrastructure/repositories/issue_repository.rs` using the `delete_issue()` fn from T003 (depends on T003)
+- [x] T007 [US1] Add `Delete { id, output, json }` variant to `IssueSubcommand` and live-path handler arm in `src/cli/commands/issue.rs`; print `"Deleted issue {id}"` on success, JSON `{"deleted":true,"id":"..."}` when `--json` (depends on T004, T005, T006)
 
 **Checkpoint**: `cargo build` and `cargo test` pass. `linear issue delete <id>` works end-to-end.
 
@@ -64,12 +64,12 @@ No project setup needed — all additions slot into the existing single-project 
 
 > **Write this test FIRST and confirm it FAILS (Red) before writing implementation.**
 
-- [ ] T008 [US2] Add failing unit test for dry-run path in the `#[cfg(test)]` module of `src/application/use_cases/delete_issue.rs` (dry_run=true must return `Ok(Deleted)` without calling repo)
+- [x] T008 [US2] Add failing unit test for dry-run path in the `#[cfg(test)]` module of `src/application/use_cases/delete_issue.rs` (dry_run=true must return `Ok(Deleted)` without calling repo)
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Extend `DeleteIssue::execute()` to short-circuit when `dry_run=true` (return early without calling repo) in `src/application/use_cases/delete_issue.rs` — makes T008 green
-- [ ] T010 [US2] Add `--dry-run` flag to `Delete` subcommand variant; add dry-run output `"[dry-run] Would delete issue: {id}"` (human) and `{"dry_run":true,"id":"..."}` (JSON) in `src/cli/commands/issue.rs`
+- [x] T009 [US2] Extend `DeleteIssue::execute()` to short-circuit when `dry_run=true` (return early without calling repo) in `src/application/use_cases/delete_issue.rs` — makes T008 green
+- [x] T010 [US2] Add `--dry-run` flag to `Delete` subcommand variant; add dry-run output `"[dry-run] Would delete issue: {id}"` (human) and `{"dry_run":true,"id":"..."}` (JSON) in `src/cli/commands/issue.rs`
 
 **Checkpoint**: `cargo test` passes. Dry-run exits instantly, no API call made.
 
@@ -77,9 +77,9 @@ No project setup needed — all additions slot into the existing single-project 
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T011 [P] Run `cargo clippy -- -D warnings` from repo root; fix any new warnings introduced by this feature
-- [ ] T012 [P] Run `cargo fmt --check`; fix any formatting issues
-- [ ] T013 Run `cargo test` (full suite); confirm all tests pass including pre-existing ones
+- [x] T011 [P] Run `cargo clippy -- -D warnings` from repo root; fix any new warnings introduced by this feature
+- [x] T012 [P] Run `cargo fmt --check`; fix any formatting issues
+- [x] T013 Run `cargo test` (full suite); confirm all tests pass including pre-existing ones
 
 ---
 
