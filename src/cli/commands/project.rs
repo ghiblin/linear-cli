@@ -50,6 +50,8 @@ pub enum ProjectSubcommand {
 pub struct ListArgs {
     #[arg(long, help = "Filter by team UUID")]
     pub team: Option<String>,
+    #[arg(long, help = "Filter by partial name (case-insensitive)")]
+    pub name: Option<String>,
     #[arg(long, default_value = "50", help = "Max results per page")]
     pub limit: u32,
     #[arg(long, help = "Pagination cursor")]
@@ -310,7 +312,13 @@ pub async fn run_project(cmd: &ProjectCommand, force_json: bool) -> Result<(), a
                 .unwrap();
             verbose_print(verbose, "Fetching projects…");
             let result = uc
-                .execute(team_id, args.limit, args.cursor.clone(), args.all)
+                .execute(
+                    team_id,
+                    args.limit,
+                    args.cursor.clone(),
+                    args.all,
+                    args.name.clone(),
+                )
                 .await?;
             verbose_print(
                 verbose,
@@ -735,6 +743,7 @@ mod tests {
     fn list_args_has_debug_flag() {
         let args = ListArgs {
             team: None,
+            name: None,
             limit: 50,
             cursor: None,
             all: false,

@@ -44,6 +44,7 @@ mod tests {
                 team_id: Option<TeamId>,
                 first: u32,
                 after: Option<String>,
+                name_contains: Option<String>,
             ) -> Result<ListProjectsResult, DomainError>;
             async fn get(&self, id: ProjectId) -> Result<Project, DomainError>;
             async fn create(&self, input: CreateProjectInput) -> Result<Project, DomainError>;

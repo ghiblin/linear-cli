@@ -135,10 +135,19 @@ impl ProjectRepository for LinearProjectRepository {
         team_id: Option<TeamId>,
         first: u32,
         after: Option<String>,
+        name_contains: Option<String>,
     ) -> Result<ListProjectsResult, DomainError> {
         let tid = team_id.as_ref().map(|t| t.as_str());
-        let (nodes, page_info_node) =
-            fetch_projects(&self.http, &self.api_key, first as i32, after, tid).await?;
+        let name_ref = name_contains.as_deref();
+        let (nodes, page_info_node) = fetch_projects(
+            &self.http,
+            &self.api_key,
+            first as i32,
+            after,
+            tid,
+            name_ref,
+        )
+        .await?;
         let items = nodes
             .into_iter()
             .map(node_to_project)

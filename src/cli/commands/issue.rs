@@ -46,6 +46,8 @@ pub enum IssueSubcommand {
         priority: Option<String>,
         #[arg(long = "label", num_args = 1)]
         labels: Vec<String>,
+        #[arg(long, help = "Filter by partial title (case-insensitive)")]
+        title: Option<String>,
         #[arg(long)]
         all: bool,
         #[arg(long, default_value = "50")]
@@ -360,6 +362,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
             assignee,
             priority,
             labels,
+            title,
             all,
             limit,
             cursor,
@@ -370,10 +373,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                 .as_deref()
                 .map(|t| TeamId::new(t.to_string()))
                 .transpose()?;
-            let project_id = project
-                .as_deref()
-                .map(|p| ProjectId::parse(p))
-                .transpose()?;
+            let project_id = project.as_deref().map(ProjectId::parse).transpose()?;
             let assignee_id = assignee
                 .as_deref()
                 .map(|a| UserId::new(a.to_string()))
@@ -394,6 +394,7 @@ pub async fn run_issue(cmd: &IssueCommand, force_json: bool) -> Result<(), anyho
                 limit: *limit,
                 cursor: cursor.clone(),
                 all_pages: *all,
+                title_contains: title.clone(),
             };
 
             let repo = LinearIssueRepository::new(api_key_str);

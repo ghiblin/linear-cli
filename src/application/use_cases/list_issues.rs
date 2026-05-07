@@ -62,6 +62,7 @@ mod tests {
             limit: 50,
             cursor: None,
             all_pages: false,
+            title_contains: None,
         }
     }
 
@@ -90,5 +91,26 @@ mod tests {
         let use_case = ListIssues::new(Box::new(mock));
         let result = use_case.execute(default_input()).await;
         assert!(result.is_err());
+    }
+
+    // T003
+    #[tokio::test]
+    async fn list_issues_use_case_passes_title_contains() {
+        let mut mock = MockIssueRepo::new();
+        mock.expect_list()
+            .withf(|input| input.title_contains.as_deref() == Some("fix"))
+            .returning(|_| {
+                Ok(ListIssuesResult {
+                    items: vec![],
+                    next_cursor: None,
+                    has_next_page: false,
+                })
+            });
+
+        let use_case = ListIssues::new(Box::new(mock));
+        let mut input = default_input();
+        input.title_contains = Some("fix".to_string());
+        let result = use_case.execute(input).await.unwrap();
+        assert!(result.items.is_empty());
     }
 }
