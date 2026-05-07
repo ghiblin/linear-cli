@@ -48,6 +48,7 @@ mod tests {
             async fn create(&self, input: CreateIssueInput) -> Result<Issue, DomainError>;
             async fn update(&self, id: IssueId, input: UpdateIssueInput) -> Result<Issue, DomainError>;
             async fn list_workflow_states(&self, team_id: TeamId) -> Result<Vec<WorkflowStateInfo>, DomainError>;
+            async fn delete(&self, id: IssueId) -> Result<(), DomainError>;
         }
     }
 

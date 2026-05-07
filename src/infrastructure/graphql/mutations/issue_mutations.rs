@@ -120,6 +120,26 @@ pub struct IssueUpdateVariables {
     pub input: IssueUpdateInput,
 }
 
+// ---- Delete ----
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "IssueArchivePayload")]
+pub struct IssueArchivePayload {
+    pub success: bool,
+}
+
+#[derive(cynic::QueryVariables, Debug)]
+pub struct IssueDeleteVariables {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Mutation", variables = "IssueDeleteVariables")]
+pub struct IssueDeleteMutation {
+    #[arguments(id: $id)]
+    pub issue_delete: IssueArchivePayload,
+}
+
 // ---- Fetch functions ----
 
 pub async fn create_issue(
@@ -201,4 +221,24 @@ pub async fn update_issue(
             "issue not returned in update response".to_string(),
         )
     })
+}
+
+pub async fn delete_issue(
+    client: &reqwest::Client,
+    api_key: &str,
+    id: &str,
+) -> Result<(), crate::domain::errors::DomainError> {
+    let op = IssueDeleteMutation::build(IssueDeleteVariables { id: id.to_string() });
+    let resp: GraphqlResponse<IssueDeleteMutation> =
+        execute_with_retry(client, api_key, &op.query, op.variables).await?;
+    if let Some(errors) = resp.errors {
+        return Err(map_errors(errors));
+    }
+    let data = resp.data.ok_or_else(|| {
+        crate::domain::errors::DomainError::InvalidInput("empty API response".to_string())
+    })?;
+    if !data.issue_delete.success {
+        return Err(crate::domain::errors::DomainError::NotFound(id.to_string()));
+    }
+    Ok(())
 }
