@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-specs/006-add-json-flag/plan.md
+specs/007-filter-partial-title/plan.md
 <!-- SPECKIT END -->
